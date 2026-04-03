@@ -316,4 +316,34 @@ describe('list command', () => {
       expect(calledWith).toContain('PROJ-200');
     });
   });
+
+  describe('STATUS COLUMN MERGED', () => {
+    it('HEADER NO REMOTE: header does not contain "remote" column', async () => {
+      const { lines, spy } = captureConsoleLog();
+      const { registerListCommand } = await import('./list.js');
+      const program = new Command();
+      program.exitOverride();
+      registerListCommand(program);
+      await program.parseAsync(['list'], { from: 'user' });
+      spy.mockRestore();
+      const header = lines[0];
+      expect(header).not.toContain('remote');
+      expect(header).toContain('status');
+    });
+
+    it('COMBINED STATUS: clean row shows ✓ and ahead/behind in same column area', async () => {
+      const { lines, spy } = captureConsoleLog();
+      mockGitAheadBehind.mockResolvedValue({ ahead: 2, behind: 1 });
+      const { registerListCommand } = await import('./list.js');
+      const program = new Command();
+      program.exitOverride();
+      registerListCommand(program);
+      await program.parseAsync(['list'], { from: 'user' });
+      spy.mockRestore();
+      const output = lines.join('\n');
+      // Both indicators present in output (same row)
+      expect(output).toContain('✓');
+      expect(output).toContain('↑2 ↓1');
+    });
+  });
 });

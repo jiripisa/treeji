@@ -92,32 +92,40 @@ export function registerListCommand(program: Command): void {
         }),
         'jira status'.length,
       );
+      const statusWidth = Math.max(
+        ...rows.map((r) => {
+          const isDirty = r.status.trim().length > 0;
+          const flag = isDirty ? '✗' : '✓';
+          return `${flag} ↑${r.aheadBehind.ahead} ↓${r.aheadBehind.behind}`.length;
+        }),
+        'status'.length,
+      );
 
-      // Header row — order: name | status | branch | remote | age | ticket | jira status
+      // Header row — order: name | status | branch | age | ticket | jira status
       console.log(
         'name'.padEnd(nameWidth + 2) +
-          'status'.padEnd(8) +
+          'status'.padEnd(statusWidth + 2) +
           'branch'.padEnd(branchWidth + 2) +
-          'remote'.padEnd(10) +
           'age'.padEnd(ageWidth + 2) +
           'ticket'.padEnd(ticketKeyWidth + 2) +
           'jira status',
       );
-      console.log('─'.repeat(nameWidth + 2 + 8 + branchWidth + 2 + 10 + ageWidth + 2 + ticketKeyWidth + 2 + jiraStatusWidth));
+      console.log('─'.repeat(nameWidth + 2 + statusWidth + 2 + branchWidth + 2 + ageWidth + 2 + ticketKeyWidth + 2 + jiraStatusWidth));
 
       // Data rows
       for (const { wt, status, aheadBehind, age } of rows) {
         const isDirty = status.trim().length > 0;
         const name = path.basename(wt.path).padEnd(nameWidth + 2);
-        const dirtyLabel = isDirty ? chalk.red('✗      ') : chalk.green('✓      ');
+        const flag = isDirty ? chalk.red('✗') : chalk.green('✓');
+        const remote = `↑${aheadBehind.ahead} ↓${aheadBehind.behind}`;
+        const statusCol = `${flag} ${remote}`.padEnd(statusWidth + 2);
         const branch = (wt.branch ?? '(detached)').padEnd(branchWidth + 2);
-        const remote = `↑${aheadBehind.ahead} ↓${aheadBehind.behind}`.padEnd(10);
         const ageCol = age.padEnd(ageWidth + 2);
         const ticketKey = extractTicketKey(wt.branch);
         const ticketKeyCol = (ticketKey ?? '').padEnd(ticketKeyWidth + 2);
         const ticketStatus = ticketKey ? (jiraStatuses.get(ticketKey) ?? '') : '';
         const jiraStatusCol = colorStatus(ticketStatus);
-        console.log(name + dirtyLabel + branch + remote + ageCol + ticketKeyCol + jiraStatusCol);
+        console.log(name + statusCol + branch + ageCol + ticketKeyCol + jiraStatusCol);
       }
 
       // JIRA warning after table
