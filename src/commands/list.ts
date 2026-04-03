@@ -9,6 +9,7 @@ import {
   parseWorktreeList,
 } from '../lib/git.js';
 import { fetchIssueStatuses } from '../lib/jira.js';
+import { loadConfig } from '../lib/config.js';
 
 function extractTicketKey(branch: string | null | undefined): string | null {
   if (!branch) return null;
@@ -21,6 +22,14 @@ export function colorStatus(statusName: string): string {
   if (lower === 'in progress' || lower.includes('progress')) return chalk.yellow(statusName);
   if (lower === 'done' || lower === 'closed' || lower === 'resolved') return chalk.green(statusName);
   return chalk.gray(statusName || '');
+}
+
+function jiraCell(key: string | null, statusName: string, host: string | undefined): string {
+  if (!key) return '';
+  const url = host ? `${host}/browse/${key}` : '';
+  const link = `\x1b]8;;${url}\x1b\\${key}\x1b]8;;\x1b\\`;
+  if (!statusName) return link;
+  return `${link} (${colorStatus(statusName)})`;
 }
 
 export function registerListCommand(program: Command): void {
@@ -66,6 +75,9 @@ export function registerListCommand(program: Command): void {
         }
       }
 
+      // Load config for JIRA host (used in hyperlinks)
+      const { host } = loadConfig();
+
       // Compute max widths for alignment
       // name column: basename of worktree path
       const nameWidth = Math.max(
@@ -77,20 +89,14 @@ export function registerListCommand(program: Command): void {
         'branch'.length,
       );
       const ageWidth = Math.max(...rows.map((r) => r.age.length), 'age'.length);
-      const ticketKeyWidth = Math.max(
-        ...rows.map((r) => {
-          const key = extractTicketKey(r.wt.branch);
-          return key ? key.length : 0;
-        }),
-        'ticket'.length,
-      );
-      const jiraStatusWidth = Math.max(
+      const jiraWidth = Math.max(
         ...rows.map((r) => {
           const key = extractTicketKey(r.wt.branch);
           const status = key ? (jiraStatuses.get(key) ?? '') : '';
-          return status.length;
+          if (!key) return 0;
+          return status ? `${key} (${status})`.length : key.length;
         }),
-        'jira status'.length,
+        'jira'.length,
       );
       const statusWidth = Math.max(
         ...rows.map((r) => {
@@ -101,16 +107,15 @@ export function registerListCommand(program: Command): void {
         'status'.length,
       );
 
-      // Header row — order: name | status | branch | age | ticket | jira status
+      // Header row — order: name | status | branch | age | jira
       console.log(
         'name'.padEnd(nameWidth + 2) +
           'status'.padEnd(statusWidth + 2) +
           'branch'.padEnd(branchWidth + 2) +
           'age'.padEnd(ageWidth + 2) +
-          'ticket'.padEnd(ticketKeyWidth + 2) +
-          'jira status',
+          'jira',
       );
-      console.log('─'.repeat(nameWidth + 2 + statusWidth + 2 + branchWidth + 2 + ageWidth + 2 + ticketKeyWidth + 2 + jiraStatusWidth));
+      console.log('─'.repeat(nameWidth + 2 + statusWidth + 2 + branchWidth + 2 + ageWidth + 2 + jiraWidth));
 
       // Data rows
       for (const { wt, status, aheadBehind, age } of rows) {
@@ -122,10 +127,13 @@ export function registerListCommand(program: Command): void {
         const branch = (wt.branch ?? '(detached)').padEnd(branchWidth + 2);
         const ageCol = age.padEnd(ageWidth + 2);
         const ticketKey = extractTicketKey(wt.branch);
-        const ticketKeyCol = (ticketKey ?? '').padEnd(ticketKeyWidth + 2);
         const ticketStatus = ticketKey ? (jiraStatuses.get(ticketKey) ?? '') : '';
-        const jiraStatusCol = colorStatus(ticketStatus);
-        console.log(name + statusCol + branch + ageCol + ticketKeyCol + jiraStatusCol);
+        const jiraVisible = ticketKey
+          ? ((!jiraWarning && ticketStatus) ? `${ticketKey} (${ticketStatus})` : ticketKey)
+          : '';
+        const jiraColRaw = jiraCell(ticketKey, jiraWarning ? '' : ticketStatus, host);
+        const jiraColPadded = jiraColRaw + ' '.repeat(Math.max(0, jiraWidth + 2 - jiraVisible.length));
+        console.log(name + statusCol + branch + ageCol + jiraColPadded);
       }
 
       // JIRA warning after table
