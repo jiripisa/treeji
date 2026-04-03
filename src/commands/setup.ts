@@ -1,0 +1,29 @@
+import { Command } from 'commander';
+
+const SHELL_WRAPPER = `# treeji — shell function that intercepts 'switch' to cd into the worktree
+# Install: add to ~/.zshrc (or ~/.bashrc)
+treeji() {
+  if [ "$1" = "switch" ]; then
+    shift
+    command treeji switch "$@"
+    local exit_code=$?
+    if [ $exit_code -ne 0 ]; then return 1; fi
+    local f="/tmp/treeji-switch-$$"
+    if [ -f "$f" ]; then
+      cd "$(cat "$f")" && rm -f "$f"
+    fi
+  else
+    command treeji "$@"
+  fi
+}
+`;
+
+export function registerSetupCommand(program: Command): void {
+  program
+    .command('setup')
+    .description('Print treeji shell function — add to ~/.zshrc to enable worktree cd')
+    .action(() => {
+      process.stderr.write('Add the following to ~/.zshrc (or ~/.bashrc), then run: source ~/.zshrc\n');
+      process.stdout.write(SHELL_WRAPPER);
+    });
+}
