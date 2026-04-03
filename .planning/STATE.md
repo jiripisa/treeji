@@ -118,9 +118,10 @@ None yet.
 | 260403-c5y | switch command — interactive worktree picker | 2026-04-03 | cc04ae3 | [260403-c5y-switch-command-interactive-worktree-pick](./quick/260403-c5y-switch-command-interactive-worktree-pick/) |
 | 260403-csm | replace mafcd with mafcli() shell function | 2026-04-03 | 04254d2 | [260403-csm-replace-mafcd-with-mafcli-switch-shell-w](./quick/260403-csm-replace-mafcd-with-mafcli-switch-shell-w/) |
 | 260403-dvk | UX improvements batch across 7 command files | 2026-04-03 | 4ad12ba | [260403-dvk-ux-improvements-batch](./quick/260403-dvk-ux-improvements-batch/) |
+| 260403-nip | switch: require shell wrapper — guard + remove TTY hint | 2026-04-03 | f5d173a | [260403-nip-switch-require-shell-wrapper](./quick/260403-nip-switch-require-shell-wrapper/) |
 
 ## Session Continuity
 
-Last session: 2026-04-03T10:06:00.000Z
-Stopped at: Completed quick task 260403-dvk: UX improvements batch across 7 command files
+Last session: 2026-04-03T15:00:02Z
+Stopped at: Completed quick task 260403-nip: switch — require shell wrapper guard
 Resume file: None
