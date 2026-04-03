@@ -120,9 +120,10 @@ None yet.
 | 260403-dvk | UX improvements batch across 7 command files | 2026-04-03 | 4ad12ba | [260403-dvk-ux-improvements-batch](./quick/260403-dvk-ux-improvements-batch/) |
 | 260403-nip | switch: require shell wrapper — guard + remove TTY hint | 2026-04-03 | f5d173a | [260403-nip-switch-require-shell-wrapper](./quick/260403-nip-switch-require-shell-wrapper/) |
 | 260403-nwk | list: restructure columns to 7-column layout (name, branch, ticket, jira status) | 2026-04-03 | ce15da8 | [260403-nwk-list-restructure-columns](./quick/260403-nwk-list-restructure-columns/) |
+| 260403-o4j | list: merge remote column into status column — 6-column layout | 2026-04-03 | d087f93 | [260403-o4j-merge-remote-into-status-column](./quick/260403-o4j-merge-remote-into-status-column/) |
 
 ## Session Continuity
 
-Last session: 2026-04-03T17:15:00Z
-Stopped at: Completed quick task 260403-nwk: list — restructure columns to 7-column layout
+Last session: 2026-04-03T17:24:30Z
+Stopped at: Completed quick task 260403-o4j: list — merge remote column into status column
 Resume file: None
