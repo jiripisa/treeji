@@ -22,6 +22,12 @@ vi.mock('../lib/jira.js', () => ({
   fetchIssueStatuses: (...args: unknown[]) => mockFetchIssueStatuses(...args),
 }));
 
+const mockLoadConfig = vi.fn();
+
+vi.mock('../lib/config.js', () => ({
+  loadConfig: (...args: unknown[]) => mockLoadConfig(...args),
+}));
+
 // Capture console.log output
 const captureConsoleLog = () => {
   const lines: string[] = [];
@@ -40,6 +46,8 @@ describe('list command', () => {
     mockGitLastCommitRelativeDate.mockClear();
     mockFetchIssueStatuses.mockClear();
     mockFetchIssueStatuses.mockResolvedValue(new Map()); // default: no JIRA statuses
+    mockLoadConfig.mockClear();
+    mockLoadConfig.mockReturnValue({ host: 'https://jira.example.com' });
 
     // Default return values
     mockGitWorktreeList.mockResolvedValue('worktree /repo\nHEAD abc123\nbranch refs/heads/main\n');
@@ -81,7 +89,8 @@ describe('list command', () => {
       const header = lines[0];
       expect(header).toContain('name');
       expect(header).toContain('branch');
-      expect(header).toContain('jira status');
+      expect(header).toContain('jira');
+      expect(header).not.toContain('ticket');
     });
   });
 
@@ -344,6 +353,79 @@ describe('list command', () => {
       // Both indicators present in output (same row)
       expect(output).toContain('✓');
       expect(output).toContain('↑2 ↓1');
+    });
+  });
+
+  describe('JIRA HYPERLINK', () => {
+    it('jira column contains OSC 8 escape sequence linking to ticket URL', async () => {
+      const { lines, spy } = captureConsoleLog();
+
+      mockParseWorktreeList.mockReturnValue([
+        { path: '/repo-feature', head: 'abc123', branch: 'feature/PROJ-123-fix', isMain: false },
+      ]);
+      mockFetchIssueStatuses.mockResolvedValue(new Map([['PROJ-123', 'In Progress']]));
+      mockLoadConfig.mockReturnValue({ host: 'https://jira.example.com' });
+
+      const { registerListCommand } = await import('./list.js');
+      const program = new Command();
+      program.exitOverride();
+      registerListCommand(program);
+
+      await program.parseAsync(['list'], { from: 'user' });
+
+      spy.mockRestore();
+
+      const output = lines.join('\n');
+      expect(output).toContain('\x1b]8;;https://jira.example.com/browse/PROJ-123\x1b\\');
+      expect(output).toContain('PROJ-123');
+      expect(output).toContain('In Progress');
+    });
+
+    it('JIRA UNREACHABLE HYPERLINK: hyperlink still present, no parens when JIRA unreachable', async () => {
+      const { lines, spy } = captureConsoleLog();
+
+      mockParseWorktreeList.mockReturnValue([
+        { path: '/repo-feature', head: 'abc123', branch: 'feature/PROJ-500-some-task', isMain: false },
+      ]);
+      mockFetchIssueStatuses.mockRejectedValue(new Error('Network error'));
+      mockLoadConfig.mockReturnValue({ host: 'https://jira.example.com' });
+
+      const { registerListCommand } = await import('./list.js');
+      const program = new Command();
+      program.exitOverride();
+      registerListCommand(program);
+
+      await program.parseAsync(['list'], { from: 'user' });
+
+      spy.mockRestore();
+
+      const output = lines.join('\n');
+      // Hyperlink should be present even when JIRA unreachable
+      expect(output).toContain('\x1b]8;;https://jira.example.com/browse/PROJ-500\x1b\\');
+      // No status in parens when JIRA unreachable
+      expect(output).not.toContain('(');
+    });
+
+    it('NO TICKET KEY: jira column is empty when branch has no ticket key', async () => {
+      const { lines, spy } = captureConsoleLog();
+
+      mockParseWorktreeList.mockReturnValue([
+        { path: '/repo', head: 'abc123', branch: 'main', isMain: true },
+      ]);
+      mockLoadConfig.mockReturnValue({ host: 'https://jira.example.com' });
+
+      const { registerListCommand } = await import('./list.js');
+      const program = new Command();
+      program.exitOverride();
+      registerListCommand(program);
+
+      await program.parseAsync(['list'], { from: 'user' });
+
+      spy.mockRestore();
+
+      const output = lines.join('\n');
+      // No OSC 8 escape sequences in output when no ticket key
+      expect(output).not.toContain('\x1b]8;;');
     });
   });
 });
