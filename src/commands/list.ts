@@ -123,7 +123,8 @@ export function registerListCommand(program: Command): void {
         const name = path.basename(wt.path).padEnd(nameWidth + 2);
         const flag = isDirty ? chalk.red('✗') : chalk.green('✓');
         const remote = `↑${aheadBehind.ahead} ↓${aheadBehind.behind}`;
-        const statusCol = `${flag} ${remote}`.padEnd(statusWidth + 2);
+        const statusVisible = `${isDirty ? '✗' : '✓'} ${remote}`;
+        const statusCol = `${flag} ${remote}` + ' '.repeat(Math.max(0, statusWidth + 2 - statusVisible.length));
         const branch = (wt.branch ?? '(detached)').padEnd(branchWidth + 2);
         const ageCol = age.padEnd(ageWidth + 2);
         const ticketKey = extractTicketKey(wt.branch);
