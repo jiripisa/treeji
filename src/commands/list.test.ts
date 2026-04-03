@@ -75,6 +75,13 @@ describe('list command', () => {
       // Clean worktree should show ✓ symbol, not the word 'dirty'
       expect(output).not.toMatch(/dirty/);
       expect(output).toContain('✓');
+      // name column shows basename of worktree path
+      expect(output).toContain('repo');
+      // Header should contain new column names
+      const header = lines[0];
+      expect(header).toContain('name');
+      expect(header).toContain('branch');
+      expect(header).toContain('jira status');
     });
   });
 
@@ -149,6 +156,9 @@ describe('list command', () => {
       const output = lines.join('\n');
       expect(output).toContain('main');
       expect(output).toContain('feature/PROJ-101');
+      // name column shows basenames of worktree directories
+      expect(output).toContain('repo-feature');
+      expect(output).toContain('repo');
     });
   });
 
