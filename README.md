@@ -61,9 +61,9 @@ Both create the same result — a branch `{type}/{slug}` and worktree `../{slug}
 |---------|-------------|
 | `pick` | Browse assigned open JIRA tickets, select one, choose branch type → worktree created |
 | `create` | Create worktree from JIRA ticket ID or manual slug |
-| `list` | Colored table: branch, ✓/✗ status, ahead/behind, age, JIRA status, path |
-| `switch` | Interactive worktree picker or direct name lookup, cd into it |
-| `remove` | Delete worktree + branch, warns on uncommitted changes |
+| `list` | Colored table: name, ✓/✗ status with ahead/behind, branch, age, JIRA ticket with clickable link and status |
+| `switch` | Interactive worktree picker or direct name lookup, cd into selected worktree |
+| `remove` | Delete worktree + branch, confirms on dirty worktrees (`--force --yes` to skip) |
 | `configure` | Set up JIRA Cloud connection (token stored in OS keychain) |
 | `setup` | Print shell wrapper for cd support |
 
