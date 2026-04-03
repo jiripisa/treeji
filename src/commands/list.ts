@@ -1,5 +1,6 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
+import path from 'node:path';
 import {
   gitWorktreeList,
   gitStatusPorcelain,
@@ -66,43 +67,57 @@ export function registerListCommand(program: Command): void {
       }
 
       // Compute max widths for alignment
+      // name column: basename of worktree path
+      const nameWidth = Math.max(
+        ...rows.map((r) => path.basename(r.wt.path).length),
+        'name'.length,
+      );
       const branchWidth = Math.max(
         ...rows.map((r) => (r.wt.branch ?? '(detached)').length),
         'branch'.length,
       );
-      const pathWidth = Math.max(...rows.map((r) => r.wt.path.length), 'path'.length);
       const ageWidth = Math.max(...rows.map((r) => r.age.length), 'age'.length);
-      const ticketWidth = Math.max(
+      const ticketKeyWidth = Math.max(
+        ...rows.map((r) => {
+          const key = extractTicketKey(r.wt.branch);
+          return key ? key.length : 0;
+        }),
+        'ticket'.length,
+      );
+      const jiraStatusWidth = Math.max(
         ...rows.map((r) => {
           const key = extractTicketKey(r.wt.branch);
           const status = key ? (jiraStatuses.get(key) ?? '') : '';
           return status.length;
         }),
-        'ticket'.length,
+        'jira status'.length,
       );
 
-      // Header row
+      // Header row — order: name | status | branch | remote | age | ticket | jira status
       console.log(
-        'branch'.padEnd(branchWidth + 2) +
+        'name'.padEnd(nameWidth + 2) +
           'status'.padEnd(8) +
+          'branch'.padEnd(branchWidth + 2) +
           'remote'.padEnd(10) +
           'age'.padEnd(ageWidth + 2) +
-          'ticket'.padEnd(ticketWidth + 2) +
-          'path',
+          'ticket'.padEnd(ticketKeyWidth + 2) +
+          'jira status',
       );
-      console.log('─'.repeat(branchWidth + 2 + 8 + 10 + ageWidth + 2 + ticketWidth + 2 + pathWidth));
+      console.log('─'.repeat(nameWidth + 2 + 8 + branchWidth + 2 + 10 + ageWidth + 2 + ticketKeyWidth + 2 + jiraStatusWidth));
 
       // Data rows
       for (const { wt, status, aheadBehind, age } of rows) {
         const isDirty = status.trim().length > 0;
-        const branch = (wt.branch ?? '(detached)').padEnd(branchWidth + 2);
+        const name = path.basename(wt.path).padEnd(nameWidth + 2);
         const dirtyLabel = isDirty ? chalk.red('✗      ') : chalk.green('✓      ');
+        const branch = (wt.branch ?? '(detached)').padEnd(branchWidth + 2);
         const remote = `↑${aheadBehind.ahead} ↓${aheadBehind.behind}`.padEnd(10);
         const ageCol = age.padEnd(ageWidth + 2);
         const ticketKey = extractTicketKey(wt.branch);
+        const ticketKeyCol = (ticketKey ?? '').padEnd(ticketKeyWidth + 2);
         const ticketStatus = ticketKey ? (jiraStatuses.get(ticketKey) ?? '') : '';
-        const ticketCol = colorStatus(ticketStatus).padEnd(ticketWidth + 2);
-        console.log(branch + dirtyLabel + remote + ageCol + ticketCol + wt.path);
+        const jiraStatusCol = colorStatus(ticketStatus);
+        console.log(name + dirtyLabel + branch + remote + ageCol + ticketKeyCol + jiraStatusCol);
       }
 
       // JIRA warning after table
