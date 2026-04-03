@@ -2,6 +2,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Command } from 'commander';
 import fs from 'node:fs';
 
+// Save original readFileSync before any mocking
+const originalReadFileSync = fs.readFileSync.bind(fs);
+
 // Mock git library
 const mockGitWorktreeList = vi.fn();
 const mockParseWorktreeList = vi.fn();
@@ -20,8 +23,38 @@ vi.mock('@clack/prompts', () => ({
   isCancel: (...args: unknown[]) => mockIsCancel(...args),
 }));
 
+// Mock node:os
+vi.mock('node:os', () => ({
+  default: { homedir: () => '/home/testuser' },
+}));
+
 function switchFilePath(): string {
   return `/tmp/treeji-switch-${process.ppid}`;
+}
+
+/** readFileSync mock: wrapper present (.zshrc has treeji()), .bashrc throws ENOENT, others pass through */
+function mockReadFileSyncWrapperPresent(
+  filePath: fs.PathOrFileDescriptor,
+  ...args: unknown[]
+): string | Buffer {
+  if (typeof filePath === 'string' && filePath.endsWith('.zshrc')) {
+    return 'treeji() {\n  echo hi\n}\n';
+  }
+  if (typeof filePath === 'string' && filePath.endsWith('.bashrc')) {
+    throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+  }
+  return originalReadFileSync(filePath as string, args[0] as BufferEncoding);
+}
+
+/** readFileSync mock: no rc files present (all throw ENOENT), others pass through */
+function mockReadFileSyncWrapperAbsent(
+  filePath: fs.PathOrFileDescriptor,
+  ...args: unknown[]
+): string | Buffer {
+  if (typeof filePath === 'string' && (filePath.endsWith('.zshrc') || filePath.endsWith('.bashrc'))) {
+    throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+  }
+  return originalReadFileSync(filePath as string, args[0] as BufferEncoding);
 }
 
 describe('switch command — direct name arg', () => {
@@ -48,14 +81,38 @@ describe('switch command — direct name arg', () => {
       throw new ExitError(typeof code === 'number' ? code : 0);
     });
 
+    // Default: wrapper present
+    vi.spyOn(fs, 'readFileSync').mockImplementation(mockReadFileSyncWrapperPresent);
+
     // Clean up temp file before each test
     try { fs.unlinkSync(switchFilePath()); } catch { /* ignore */ }
   });
 
   afterEach(() => {
-    stderrSpy.mockRestore();
-    exitSpy.mockRestore();
+    vi.restoreAllMocks();
     try { fs.unlinkSync(switchFilePath()); } catch { /* ignore */ }
+  });
+
+  it('WRAPPER ABSENT: exits 1 with shell wrapper not installed message, no temp file', async () => {
+    vi.spyOn(fs, 'readFileSync').mockImplementation(mockReadFileSyncWrapperAbsent);
+
+    mockGitWorktreeList.mockResolvedValue('');
+    mockParseWorktreeList.mockReturnValue([
+      { path: '/home/user/feat', head: 'abc123', branch: 'feature/my-feat', isMain: false },
+    ]);
+
+    const { registerSwitchCommand } = await import('./switch.js');
+    const program = new Command();
+    program.exitOverride();
+    registerSwitchCommand(program);
+
+    await expect(
+      program.parseAsync(['switch', 'my-feat'], { from: 'user' })
+    ).rejects.toThrow('exit 1');
+
+    const stderrCalls = stderrSpy.mock.calls.map((c: unknown[]) => c[0] as string).join('');
+    expect(stderrCalls).toContain('shell wrapper not installed');
+    expect(fs.existsSync(switchFilePath())).toBe(false);
   });
 
   it('MATCH BY BRANCH SUFFIX: writes target path to temp file', async () => {
@@ -71,7 +128,7 @@ describe('switch command — direct name arg', () => {
 
     await program.parseAsync(['switch', 'my-feat'], { from: 'user' });
 
-    const content = fs.readFileSync(switchFilePath(), 'utf8');
+    const content = originalReadFileSync(switchFilePath(), 'utf8');
     expect(content).toBe('/home/user/feat');
   });
 
@@ -88,30 +145,8 @@ describe('switch command — direct name arg', () => {
 
     await program.parseAsync(['switch', 'my-task'], { from: 'user' });
 
-    const content = fs.readFileSync(switchFilePath(), 'utf8');
+    const content = originalReadFileSync(switchFilePath(), 'utf8');
     expect(content).toBe('/home/user/my-task');
-  });
-
-  it('TTY HINT: when process.stdout.isTTY is true, writes hint to stderr after writing temp file', async () => {
-    mockGitWorktreeList.mockResolvedValue('');
-    mockParseWorktreeList.mockReturnValue([
-      { path: '/home/user/feat', head: 'abc123', branch: 'feature/my-feat', isMain: false },
-    ]);
-
-    const originalIsTTY = process.stdout.isTTY;
-    Object.defineProperty(process.stdout, 'isTTY', { value: true, configurable: true });
-
-    const { registerSwitchCommand } = await import('./switch.js');
-    const program = new Command();
-    program.exitOverride();
-    registerSwitchCommand(program);
-
-    await program.parseAsync(['switch', 'my-feat'], { from: 'user' });
-
-    Object.defineProperty(process.stdout, 'isTTY', { value: originalIsTTY, configurable: true });
-
-    const stderrCalls = stderrSpy.mock.calls.map((c: unknown[]) => c[0] as string).join('');
-    expect(stderrCalls).toContain('treeji setup');
   });
 
   it('FILE MODE: temp file is written with mode 0o600', async () => {
@@ -120,7 +155,7 @@ describe('switch command — direct name arg', () => {
       { path: '/home/user/feat', head: 'abc123', branch: 'feature/my-feat', isMain: false },
     ]);
 
-    const fsSpy = vi.spyOn(fs, 'writeFileSync');
+    const writeFileSpy = vi.spyOn(fs, 'writeFileSync');
 
     const { registerSwitchCommand } = await import('./switch.js');
     const program = new Command();
@@ -129,35 +164,11 @@ describe('switch command — direct name arg', () => {
 
     await program.parseAsync(['switch', 'my-feat'], { from: 'user' });
 
-    expect(fsSpy).toHaveBeenCalledWith(
+    expect(writeFileSpy).toHaveBeenCalledWith(
       expect.any(String),
       '/home/user/feat',
       { mode: 0o600 },
     );
-
-    fsSpy.mockRestore();
-  });
-
-  it('NO TTY HINT: when process.stdout.isTTY is false, no hint written to stderr', async () => {
-    mockGitWorktreeList.mockResolvedValue('');
-    mockParseWorktreeList.mockReturnValue([
-      { path: '/home/user/feat', head: 'abc123', branch: 'feature/my-feat', isMain: false },
-    ]);
-
-    const originalIsTTY = process.stdout.isTTY;
-    Object.defineProperty(process.stdout, 'isTTY', { value: false, configurable: true });
-
-    const { registerSwitchCommand } = await import('./switch.js');
-    const program = new Command();
-    program.exitOverride();
-    registerSwitchCommand(program);
-
-    await program.parseAsync(['switch', 'my-feat'], { from: 'user' });
-
-    Object.defineProperty(process.stdout, 'isTTY', { value: originalIsTTY, configurable: true });
-
-    const stderrCalls = stderrSpy.mock.calls.map((c: unknown[]) => c[0] as string).join('');
-    expect(stderrCalls).not.toContain('treeji setup');
   });
 
   it('NOT FOUND: writes error to stderr, calls exit(1), no temp file created', async () => {
@@ -179,6 +190,24 @@ describe('switch command — direct name arg', () => {
     const stderrArg = stderrSpy.mock.calls[0]?.[0] as string;
     expect(stderrArg).toContain('nonexistent');
     expect(fs.existsSync(switchFilePath())).toBe(false);
+  });
+
+  it('NO TTY HINT: no "treeji setup" hint ever written to stderr on success', async () => {
+    mockGitWorktreeList.mockResolvedValue('');
+    mockParseWorktreeList.mockReturnValue([
+      { path: '/home/user/feat', head: 'abc123', branch: 'feature/my-feat', isMain: false },
+    ]);
+
+    const { registerSwitchCommand } = await import('./switch.js');
+    const program = new Command();
+    program.exitOverride();
+    registerSwitchCommand(program);
+
+    await program.parseAsync(['switch', 'my-feat'], { from: 'user' });
+
+    const stderrCalls = stderrSpy.mock.calls.map((c: unknown[]) => c[0] as string).join('');
+    expect(stderrCalls).not.toContain('Tip:');
+    expect(stderrCalls).not.toContain('treeji setup');
   });
 });
 
@@ -206,13 +235,38 @@ describe('switch command — interactive mode (no name arg)', () => {
       throw new ExitError(typeof code === 'number' ? code : 0);
     });
 
+    // Default: wrapper present
+    vi.spyOn(fs, 'readFileSync').mockImplementation(mockReadFileSyncWrapperPresent);
+
     try { fs.unlinkSync(switchFilePath()); } catch { /* ignore */ }
   });
 
   afterEach(() => {
-    stderrSpy.mockRestore();
-    exitSpy.mockRestore();
+    vi.restoreAllMocks();
     try { fs.unlinkSync(switchFilePath()); } catch { /* ignore */ }
+  });
+
+  it('WRAPPER ABSENT: exits 1 with shell wrapper not installed message, select() not called', async () => {
+    vi.spyOn(fs, 'readFileSync').mockImplementation(mockReadFileSyncWrapperAbsent);
+
+    mockGitWorktreeList.mockResolvedValue('');
+    mockParseWorktreeList.mockReturnValue([
+      { path: '/home/user/feat', head: 'def456', branch: 'feature/my-feat', isMain: false },
+    ]);
+
+    const { registerSwitchCommand } = await import('./switch.js');
+    const program = new Command();
+    program.exitOverride();
+    registerSwitchCommand(program);
+
+    await expect(
+      program.parseAsync(['switch'], { from: 'user' })
+    ).rejects.toThrow('exit 1');
+
+    const stderrCalls = stderrSpy.mock.calls.map((c: unknown[]) => c[0] as string).join('');
+    expect(stderrCalls).toContain('shell wrapper not installed');
+    expect(mockSelect).not.toHaveBeenCalled();
+    expect(fs.existsSync(switchFilePath())).toBe(false);
   });
 
   it('INTERACTIVE PICK: writes selected path to temp file', async () => {
@@ -231,7 +285,7 @@ describe('switch command — interactive mode (no name arg)', () => {
 
     await program.parseAsync(['switch'], { from: 'user' });
 
-    const content = fs.readFileSync(switchFilePath(), 'utf8');
+    const content = originalReadFileSync(switchFilePath(), 'utf8');
     expect(content).toBe('/home/user/feat');
   });
 

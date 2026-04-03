@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import path from 'node:path';
 import fs from 'node:fs';
+import os from 'node:os';
 import { select, isCancel } from '@clack/prompts';
 import { gitWorktreeList, parseWorktreeList } from '../lib/git.js';
 
@@ -15,6 +16,25 @@ export function registerSwitchCommand(program: Command): void {
     .command('switch [name]')
     .description('Switch to a worktree (use via the treeji shell function for cd support)')
     .action(async (name: string | undefined) => {
+      // Gate: shell wrapper must be installed for cd to work
+      const rcFiles = [
+        path.join(os.homedir(), '.zshrc'),
+        path.join(os.homedir(), '.bashrc'),
+      ];
+      const wrapperInstalled = rcFiles.some((rc) => {
+        try {
+          return fs.readFileSync(rc, 'utf8').includes('treeji()');
+        } catch {
+          return false;
+        }
+      });
+      if (!wrapperInstalled) {
+        process.stderr.write(
+          "treeji: shell wrapper not installed — run 'treeji setup' and add the function to ~/.zshrc\n"
+        );
+        process.exit(1);
+      }
+
       const porcelain = await gitWorktreeList();
       const worktrees = parseWorktreeList(porcelain);
 
@@ -60,8 +80,5 @@ export function registerSwitchCommand(program: Command): void {
 
       // Write target path to temp file for the shell wrapper to read
       fs.writeFileSync(switchFilePath(), targetPath, { mode: 0o600 });
-      if (process.stdout.isTTY) {
-        process.stderr.write("Tip: run 'treeji setup' and add the shell function to ~/.zshrc for cd support\n");
-      }
     });
 }
