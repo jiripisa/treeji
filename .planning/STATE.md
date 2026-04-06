@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Phase 4.1 context gathered
-last_updated: "2026-04-06T10:28:53.086Z"
-last_activity: "2026-04-03 - Completed quick task 260403-c5y: switch command — interactive worktree picker"
+status: executing
+stopped_at: Completed 04.1-01-PLAN.md
+last_updated: "2026-04-06T10:44:30.466Z"
+last_activity: 2026-04-06
 progress:
   total_phases: 5
   completed_phases: 4
-  total_plans: 12
-  completed_plans: 12
+  total_plans: 14
+  completed_plans: 13
   percent: 0
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-02)
 
 **Core value:** Rychlé vytvoření worktree z JIRA ticketu jedním příkazem — bez ručního kopírování názvů, zakládání branchí a navigace po souborovém systému.
-**Current focus:** Phase 04 — interactive-picker
+**Current focus:** Phase 04.1 — status-dashboard
 
 ## Current Position
 
-Phase: 04
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-04-03 - Completed quick task 260403-c5y: switch command — interactive worktree picker
+Phase: 04.1 (status-dashboard) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
+Last activity: 2026-04-06
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -64,6 +64,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 03-jira-integration P03 | 3min | 1 tasks | 2 files |
 | Phase 04-interactive-picker P01 | 2min | 2 tasks | 3 files |
 | Phase 04-interactive-picker P02 | 2min | 2 tasks | 3 files |
+| Phase 04.1-status-dashboard P01 | 2 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -101,6 +102,8 @@ Recent decisions affecting current work:
 - [Phase 04-interactive-picker]: colorStatus exported from list.ts (not duplicated in pick.ts) — single source of truth for status coloring
 - [Phase 04-interactive-picker]: No second fetchIssue() call in pick — selected issue object already has key, summary, statusName
 - [Phase 04-interactive-picker]: p.outro for empty state, p.cancel for errors — semantically correct per @clack/prompts design
+- [Phase 04.1-status-dashboard]: gitListBranches uses --format=%(refname:short) — clean names without prefix stripping needed, no -C flag (runs in CWD)
+- [Phase 04.1-status-dashboard]: fetchAssignedIssues includeAll=false default — backward-compatible with existing pick.ts callers
 
 ### Pending Todos
 
@@ -135,6 +138,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-06T10:28:53.084Z
-Stopped at: Phase 4.1 context gathered
-Resume file: .planning/phases/04.1-status-dashboard-unified-view-of-worktrees-branches-and-jira-tickets/04.1-CONTEXT.md
+Last session: 2026-04-06T10:44:30.464Z
+Stopped at: Completed 04.1-01-PLAN.md
+Resume file: None

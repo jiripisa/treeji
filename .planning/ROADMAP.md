@@ -100,8 +100,8 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 **Goal:** User can run `treeji status` and see a unified, grouped dashboard of all worktrees, local branches, and JIRA tickets — classified by their connection state and rendered in compact or full-table format
 **Requirements**: TBD
 **Depends on:** Phase 4
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 
 Plans:
-- [ ] 04.1-01-PLAN.md — Foundation: gitListBranches() in git.ts + fetchAssignedIssues includeAll param in jira.ts
+- [x] 04.1-01-PLAN.md — Foundation: gitListBranches() in git.ts + fetchAssignedIssues includeAll param in jira.ts
 - [ ] 04.1-02-PLAN.md — Status command: status.ts orchestration, classify, render, register in index.ts
