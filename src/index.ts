@@ -8,6 +8,7 @@ import { registerSwitchCommand } from './commands/switch.js';
 import { registerRemoveCommand } from './commands/remove.js';
 import { registerSetupCommand } from './commands/setup.js';
 import { registerPickCommand } from './commands/pick.js';
+import { registerStatusCommand } from './commands/status.js';
 
 const program = new Command();
 program
@@ -22,6 +23,7 @@ registerSwitchCommand(program);
 registerRemoveCommand(program);
 registerSetupCommand(program);
 registerPickCommand(program);
+registerStatusCommand(program);
 
 program.parseAsync().catch((err: unknown) => {
   const msg = err instanceof Error ? err.message : String(err);
