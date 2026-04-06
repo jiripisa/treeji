@@ -58,8 +58,8 @@ describe('create command', () => {
 
     // Default: git root returns a known path
     mockGetGitRoot.mockResolvedValue('/home/user/myrepo');
-    // Default: gitWorktreeAdd resolves
-    mockGitWorktreeAdd.mockResolvedValue(undefined);
+    // Default: gitWorktreeAdd resolves with { existed: false } (new branch)
+    mockGitWorktreeAdd.mockResolvedValue({ existed: false });
     // Default: toSlug passes input through (simple slugify behavior)
     mockToSlug.mockImplementation((input: string) => input);
     // Default: validateSlug returns undefined (valid)
@@ -274,6 +274,44 @@ describe('create command', () => {
       );
     });
 
+    it('EXISTING BRANCH NOTE (JIRA PATH): when gitWorktreeAdd returns { existed: true }, note printed to stderr', async () => {
+      mockFetchIssue.mockResolvedValue({ key: 'PROJ-123', summary: 'Fix login page', statusName: 'To Do' });
+      mockToSlug.mockImplementation((input: string) => {
+        if (input === 'Fix login page') return 'fix-login-page';
+        return input;
+      });
+      mockGitWorktreeAdd.mockResolvedValue({ existed: true });
+
+      const { registerCreateCommand } = await import('./create.js');
+      const program = new Command();
+      program.exitOverride();
+      registerCreateCommand(program);
+
+      await program.parseAsync(['create', 'PROJ-123', 'feature'], { from: 'user' });
+
+      const stderrOutput = stderrSpy.mock.calls.map((c: unknown[]) => c[0] as string).join('');
+      expect(stderrOutput).toContain('Using existing branch:');
+    });
+
+    it('NO NOTE (JIRA PATH): when gitWorktreeAdd returns { existed: false }, note not printed', async () => {
+      mockFetchIssue.mockResolvedValue({ key: 'PROJ-123', summary: 'Fix login page', statusName: 'To Do' });
+      mockToSlug.mockImplementation((input: string) => {
+        if (input === 'Fix login page') return 'fix-login-page';
+        return input;
+      });
+      mockGitWorktreeAdd.mockResolvedValue({ existed: false });
+
+      const { registerCreateCommand } = await import('./create.js');
+      const program = new Command();
+      program.exitOverride();
+      registerCreateCommand(program);
+
+      await program.parseAsync(['create', 'PROJ-123', 'feature'], { from: 'user' });
+
+      const stderrOutput = stderrSpy.mock.calls.map((c: unknown[]) => c[0] as string).join('');
+      expect(stderrOutput).not.toContain('Using existing branch:');
+    });
+
     it('SPINNER SHOWN: spinnerStart called before fetchIssue resolves, spinnerStop called after', async () => {
       let resolveIssue!: (value: { key: string; summary: string; statusName: string }) => void;
       const issuePromise = new Promise<{ key: string; summary: string; statusName: string }>((resolve) => {
@@ -299,6 +337,38 @@ describe('create command', () => {
 
       expect(mockSpinnerStop).toHaveBeenCalled();
     });
+  });
+
+  it('EXISTING BRANCH NOTE (MANUAL PATH): when gitWorktreeAdd returns { existed: true }, note printed to stderr', async () => {
+    mockToSlug.mockReturnValue('my-feature');
+    mockValidateSlug.mockReturnValue(undefined);
+    mockGitWorktreeAdd.mockResolvedValue({ existed: true });
+
+    const { registerCreateCommand } = await import('./create.js');
+    const program = new Command();
+    program.exitOverride();
+    registerCreateCommand(program);
+
+    await program.parseAsync(['create', 'my-feature', 'feature'], { from: 'user' });
+
+    const stderrOutput = stderrSpy.mock.calls.map((c: unknown[]) => c[0] as string).join('');
+    expect(stderrOutput).toContain('Using existing branch:');
+  });
+
+  it('NO NOTE (MANUAL PATH): when gitWorktreeAdd returns { existed: false }, note not printed', async () => {
+    mockToSlug.mockReturnValue('my-feature');
+    mockValidateSlug.mockReturnValue(undefined);
+    mockGitWorktreeAdd.mockResolvedValue({ existed: false });
+
+    const { registerCreateCommand } = await import('./create.js');
+    const program = new Command();
+    program.exitOverride();
+    registerCreateCommand(program);
+
+    await program.parseAsync(['create', 'my-feature', 'feature'], { from: 'user' });
+
+    const stderrOutput = stderrSpy.mock.calls.map((c: unknown[]) => c[0] as string).join('');
+    expect(stderrOutput).not.toContain('Using existing branch:');
   });
 
   it('JIRA PREVIEW: prints branch and path to stderr before spinner starts for JIRA path', async () => {

@@ -69,7 +69,7 @@ describe('pick command', () => {
 
     // Defaults
     mockGetGitRoot.mockResolvedValue('/home/user/myrepo');
-    mockGitWorktreeAdd.mockResolvedValue(undefined);
+    mockGitWorktreeAdd.mockResolvedValue({ existed: false });
     mockFetchAssignedIssues.mockResolvedValue(sampleIssues);
     mockSelect.mockResolvedValue(sampleIssues[0]);
     mockText.mockResolvedValue('feature');
@@ -284,6 +284,34 @@ describe('pick command', () => {
 
     const stderrOutput = stderrSpy.mock.calls.map((c: unknown[]) => c[0] as string).join('');
     expect(stderrOutput).toMatch(/50 tickets|first 50/);
+  });
+
+  it('EXISTING BRANCH NOTE: when gitWorktreeAdd returns { existed: true }, note printed to stderr containing branch name', async () => {
+    mockGitWorktreeAdd.mockResolvedValue({ existed: true });
+
+    const { registerPickCommand } = await import('./pick.js');
+    const program = new Command();
+    program.exitOverride();
+    registerPickCommand(program);
+
+    await program.parseAsync(['pick'], { from: 'user' });
+
+    const stderrOutput = stderrSpy.mock.calls.map((c: unknown[]) => c[0] as string).join('');
+    expect(stderrOutput).toContain('Using existing branch:');
+  });
+
+  it('NO NOTE: when gitWorktreeAdd returns { existed: false }, note not printed', async () => {
+    mockGitWorktreeAdd.mockResolvedValue({ existed: false });
+
+    const { registerPickCommand } = await import('./pick.js');
+    const program = new Command();
+    program.exitOverride();
+    registerPickCommand(program);
+
+    await program.parseAsync(['pick'], { from: 'user' });
+
+    const stderrOutput = stderrSpy.mock.calls.map((c: unknown[]) => c[0] as string).join('');
+    expect(stderrOutput).not.toContain('Using existing branch:');
   });
 
   it('NOT 50 TICKETS: when issues.length !== 50 (e.g. 2), no note written', async () => {

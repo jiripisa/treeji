@@ -30,8 +30,9 @@ export function registerCreateCommand(program: Command): void {
           process.stderr.write(`Creating: ${branch}  →  ${worktreePath}\n`);
           const spinner2 = p.spinner();
           spinner2.start(`Creating worktree ${ticketSlug}...`);
-          await gitWorktreeAdd(worktreePath, branch);
+          const { existed } = await gitWorktreeAdd(worktreePath, branch);
           spinner2.stop(`Worktree created at ${worktreePath}`);
+          if (existed) process.stderr.write(`Using existing branch: ${branch}\n`);
           p.outro(`Branch: ${branch}`);
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
@@ -61,8 +62,9 @@ export function registerCreateCommand(program: Command): void {
         process.stderr.write(`Creating: ${branch}  →  ${worktreePath}\n`);
         const spinner = p.spinner();
         spinner.start(`Creating worktree ${cleanSlug}...`);
-        await gitWorktreeAdd(worktreePath, branch);
+        const { existed: branchExisted } = await gitWorktreeAdd(worktreePath, branch);
         spinner.stop(`Worktree created at ${worktreePath}`);
+        if (branchExisted) process.stderr.write(`Using existing branch: ${branch}\n`);
         p.outro(`Branch: ${branch}`);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
