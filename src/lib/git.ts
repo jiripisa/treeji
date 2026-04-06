@@ -23,19 +23,25 @@ export async function gitWorktreeAdd(worktreePath: string, branch: string): Prom
   await execa('git', ['worktree', 'add', '-b', branch, worktreePath]);
 }
 
-export async function gitWorktreeRemove(worktreePath: string, force = false): Promise<void> {
-  const args = ['worktree', 'remove', worktreePath];
+export async function gitWorktreeRemove(worktreePath: string, force = false, gitRoot?: string): Promise<void> {
+  const args = gitRoot
+    ? ['-C', gitRoot, 'worktree', 'remove', worktreePath]
+    : ['worktree', 'remove', worktreePath];
   if (force) args.push('--force');
   await execa('git', args);
 }
 
-export async function gitWorktreePrune(): Promise<void> {
-  await execa('git', ['worktree', 'prune']);
+export async function gitWorktreePrune(gitRoot?: string): Promise<void> {
+  const args = gitRoot ? ['-C', gitRoot, 'worktree', 'prune'] : ['worktree', 'prune'];
+  await execa('git', args);
 }
 
-export async function gitDeleteBranch(branch: string, force = false): Promise<void> {
+export async function gitDeleteBranch(branch: string, force = false, gitRoot?: string): Promise<void> {
   // -d refuses deletion if unmerged; -D forces it (for --force flag flows)
-  await execa('git', ['branch', force ? '-D' : '-d', branch]);
+  const args = gitRoot
+    ? ['-C', gitRoot, 'branch', force ? '-D' : '-d', branch]
+    : ['branch', force ? '-D' : '-d', branch];
+  await execa('git', args);
 }
 
 export async function gitStatusPorcelain(worktreePath: string): Promise<string> {
