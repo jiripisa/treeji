@@ -25,6 +25,9 @@ You'll need your JIRA Cloud URL, email, and [API token](https://id.atlassian.com
 ## Usage
 
 ```bash
+# See everything at a glance — worktrees, branches, JIRA tickets
+treeji status
+
 # Pick a ticket interactively from your assigned JIRA issues
 treeji pick
 
@@ -43,8 +46,8 @@ treeji switch
 # Switch to a worktree by name
 treeji switch PROJ-123-fix-login
 
-# Remove a worktree
-treeji remove PROJ-123-fix-login
+# Remove a worktree (interactive safe picker)
+treeji remove
 ```
 
 ## `pick` vs `create`
@@ -59,11 +62,12 @@ Both create the same result — a branch `{type}/{slug}` and worktree `../{slug}
 
 | Command | What it does |
 |---------|-------------|
+| `status` | Unified dashboard: worktrees + branches + JIRA tickets grouped by connection state (`--full` for detail, `--all` for closed tickets) |
 | `pick` | Browse assigned open JIRA tickets, select one, choose branch type → worktree created |
-| `create` | Create worktree from JIRA ticket ID or manual slug |
-| `list` | Colored table: name, ✓/✗ status with ahead/behind, branch, age, JIRA ticket with clickable link and status |
+| `create` | Create worktree from JIRA ticket ID or manual slug. Reuses existing branch if one exists |
+| `list` | Colored table: name, ✓/✗ status with ahead/behind, branch, age, clickable JIRA ticket link and status |
 | `switch` | Interactive worktree picker or direct name lookup, cd into selected worktree |
-| `remove` | Delete worktree + branch, confirms on dirty worktrees (`--force --yes` to skip) |
+| `remove` | Interactive safe picker (only deletable worktrees) or direct name. Warns on unmerged branches |
 | `configure` | Set up JIRA Cloud connection (token stored in OS keychain) |
 | `setup` | Print shell wrapper for cd support |
 
