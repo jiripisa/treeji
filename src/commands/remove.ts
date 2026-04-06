@@ -1,5 +1,6 @@
 import { Command } from 'commander';
 import * as p from '@clack/prompts';
+import chalk from 'chalk';
 import path from 'node:path';
 import type { WorktreeInfo } from '../types/worktree.js';
 import {
@@ -26,19 +27,39 @@ export function registerRemoveCommand(program: Command): void {
         const worktrees = parseWorktreeList(porcelain);
         const nonMain = worktrees.filter((wt) => !wt.isMain && wt.branch !== null);
 
-        // Check each candidate: clean + branch on remote
-        const safeWorktrees = (
-          await Promise.all(
-            nonMain.map(async (wt) => {
-              const statusOutput = await gitStatusPorcelain(wt.path);
-              const isDirty = statusOutput.trim().length > 0;
-              if (isDirty) return null;
-              const onRemote = await gitBranchExistsOnRemote(wt.branch!);
-              if (!onRemote) return null;
-              return wt;
-            })
-          )
-        ).filter((wt): wt is WorktreeInfo => wt !== null);
+        // Check each candidate: classify as safe or blocked (dirty / branch not on remote)
+        const results = await Promise.all(
+          nonMain.map(async (wt) => {
+            const statusOutput = await gitStatusPorcelain(wt.path);
+            const isDirty = statusOutput.trim().length > 0;
+            const onRemote = await gitBranchExistsOnRemote(wt.branch!);
+            const reasons: string[] = [];
+            if (isDirty) reasons.push('uncommitted changes');
+            if (!onRemote) reasons.push('branch not pushed to remote');
+            return reasons.length === 0
+              ? { kind: 'safe' as const, wt }
+              : { kind: 'blocked' as const, wt, reasons };
+          })
+        );
+
+        const safeWorktrees: WorktreeInfo[] = [];
+        const blockedWorktrees: Array<{ wt: WorktreeInfo; reasons: string[] }> = [];
+        for (const result of results) {
+          if (result.kind === 'safe') {
+            safeWorktrees.push(result.wt);
+          } else {
+            blockedWorktrees.push({ wt: result.wt, reasons: result.reasons });
+          }
+        }
+
+        if (blockedWorktrees.length > 0) {
+          console.log('Cannot remove:');
+          for (const { wt, reasons } of blockedWorktrees) {
+            const wtName = path.basename(wt.path);
+            console.log(`  ${chalk.yellow(wtName)}  ${chalk.dim('— ' + reasons.join(', '))}`);
+          }
+          console.log('');
+        }
 
         if (safeWorktrees.length === 0) {
           p.outro('No worktrees can be safely removed');
