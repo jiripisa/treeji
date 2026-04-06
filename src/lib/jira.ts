@@ -74,14 +74,15 @@ export async function fetchIssueStatuses(
   return map;
 }
 
-export async function fetchAssignedIssues(maxResults = 50): Promise<Array<{
+export async function fetchAssignedIssues(maxResults = 50, includeAll = false): Promise<Array<{
   key: string;
   summary: string;
   statusName: string;
 }>> {
   const client = createJiraClient();
-  const jql =
-    'assignee = currentUser() AND statusCategory != Done ORDER BY updated DESC';
+  const jql = includeAll
+    ? 'assignee = currentUser() ORDER BY updated DESC'
+    : 'assignee = currentUser() AND statusCategory != Done ORDER BY updated DESC';
   const result = await withRetry(() =>
     client.issueSearch.searchForIssuesUsingJqlEnhancedSearchPost({
       jql,

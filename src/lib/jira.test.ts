@@ -303,4 +303,21 @@ describe('fetchAssignedIssues', () => {
       }),
     );
   });
+
+  it('uses statusCategory filter by default (includeAll=false)', async () => {
+    const { fetchAssignedIssues } = await import('./jira.js');
+    await fetchAssignedIssues(50, false);
+
+    const jqlUsed = mockSearchForIssuesUsingJqlEnhancedSearchPost.mock.calls[0][0].jql;
+    expect(jqlUsed).toContain('statusCategory != Done');
+  });
+
+  it('omits statusCategory filter when includeAll=true', async () => {
+    const { fetchAssignedIssues } = await import('./jira.js');
+    await fetchAssignedIssues(50, true);
+
+    const jqlUsed = mockSearchForIssuesUsingJqlEnhancedSearchPost.mock.calls[0][0].jql;
+    expect(jqlUsed).not.toContain('statusCategory != Done');
+    expect(jqlUsed).toContain('assignee = currentUser()');
+  });
 });
