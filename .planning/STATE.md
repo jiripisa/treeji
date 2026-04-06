@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: verifying
-stopped_at: Completed quick task 260406-b1q: remove gitRoot CWD fix
-last_updated: "2026-04-06T06:02:00Z"
+stopped_at: Completed quick task 260406-g61: worktree add existing branch
+last_updated: "2026-04-06T11:43:00Z"
 last_activity: 2026-04-06
 progress:
   total_phases: 4
@@ -127,6 +127,7 @@ None yet.
 | 260406-9ea | remove: show blocked worktrees before interactive picker | 2026-04-06 | b2c00ab | [260406-9ea-remove-show-blocked-worktrees](./quick/260406-9ea-remove-show-blocked-worktrees/) |
 | 260406-9nj | remove: empty local branch safe + blocked shows commit list | 2026-04-06 | 45f501d | [260406-9nj-remove-empty-local-branch-safe](./quick/260406-9nj-remove-empty-local-branch-safe/) |
 | 260406-b1q | remove: gitRoot CWD fix — thread -C flag through remove flow | 2026-04-06 | 6530436 | [260406-b1q-remove-gitroot-cwd-fix](./quick/260406-b1q-remove-gitroot-cwd-fix/) |
+| 260406-g61 | worktree add existing branch — gitBranchExists + gitWorktreeAdd fix | 2026-04-06 | f4faeea | [260406-g61-worktree-add-existing-branch](./quick/260406-g61-worktree-add-existing-branch/) |
 
 ## Session Continuity
 
