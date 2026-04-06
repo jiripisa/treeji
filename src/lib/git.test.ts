@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { parseWorktreeList, gitAheadBehind, gitBranchExistsOnRemote } from './git.js';
+import { parseWorktreeList, gitAheadBehind, gitBranchExistsOnRemote, gitBranchMergedInto } from './git.js';
 
 // Mock execa module for gitAheadBehind tests
 vi.mock('execa', () => {
@@ -115,6 +115,30 @@ describe('gitBranchExistsOnRemote', () => {
   it('returns false when execa throws', async () => {
     mockExeca.mockRejectedValue(new Error('git command failed'));
     const result = await gitBranchExistsOnRemote('feature/some-branch');
+    expect(result).toBe(false);
+  });
+});
+
+describe('gitBranchMergedInto', () => {
+  beforeEach(() => {
+    mockExeca.mockReset();
+  });
+
+  it('returns true when execa resolves with exitCode 0 (merged)', async () => {
+    mockExeca.mockResolvedValue({ exitCode: 0 } as never);
+    const result = await gitBranchMergedInto('feature/my-feat', 'main');
+    expect(result).toBe(true);
+  });
+
+  it('returns false when execa rejects with exitCode 1 (not merged)', async () => {
+    mockExeca.mockRejectedValue(Object.assign(new Error('not ancestor'), { exitCode: 1 }));
+    const result = await gitBranchMergedInto('feature/my-feat', 'main');
+    expect(result).toBe(false);
+  });
+
+  it('returns false when execa rejects with any other error (safe default)', async () => {
+    mockExeca.mockRejectedValue(new Error('some git error'));
+    const result = await gitBranchMergedInto('feature/my-feat', 'main');
     expect(result).toBe(false);
   });
 });

@@ -71,6 +71,15 @@ export async function gitBranchExistsOnRemote(branch: string): Promise<boolean> 
   }
 }
 
+export async function gitBranchMergedInto(branch: string, target: string): Promise<boolean> {
+  try {
+    await execa('git', ['merge-base', '--is-ancestor', branch, target]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function parseWorktreeList(porcelain: string): WorktreeInfo[] {
   if (!porcelain.trim()) return [];
   const blocks = porcelain.trim().split(/\n\n+/);
