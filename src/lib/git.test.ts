@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { parseWorktreeList, gitAheadBehind, gitBranchExistsOnRemote, gitBranchMergedInto, gitCommitsAheadOf, gitWorktreeRemove, gitWorktreePrune, gitDeleteBranch, gitBranchExists, gitWorktreeAdd } from './git.js';
+import { parseWorktreeList, gitAheadBehind, gitBranchExistsOnRemote, gitBranchMergedInto, gitCommitsAheadOf, gitWorktreeRemove, gitWorktreePrune, gitDeleteBranch, gitBranchExists, gitWorktreeAdd, gitListBranches } from './git.js';
 
 // Mock execa module for gitAheadBehind tests
 vi.mock('execa', () => {
@@ -237,6 +237,30 @@ describe('gitBranchExists', () => {
     mockExeca.mockRejectedValue(Object.assign(new Error('fatal: Needed a single revision'), { exitCode: 128 }));
     const result = await gitBranchExists('feature/new-branch');
     expect(result).toBe(false);
+  });
+});
+
+describe('gitListBranches', () => {
+  beforeEach(() => {
+    mockExeca.mockReset();
+  });
+
+  it('returns empty array when no branches', async () => {
+    vi.mocked(execa).mockResolvedValueOnce({ stdout: '' } as never);
+    const result = await gitListBranches();
+    expect(result).toEqual([]);
+  });
+
+  it('returns clean branch names from --format output', async () => {
+    vi.mocked(execa).mockResolvedValueOnce({ stdout: 'main\nfeature/FOO-1\n' } as never);
+    const result = await gitListBranches();
+    expect(result).toEqual(['main', 'feature/FOO-1']);
+  });
+
+  it('filters empty strings (detached HEAD edge case)', async () => {
+    vi.mocked(execa).mockResolvedValueOnce({ stdout: 'main\n\nfeature/FOO-1\n' } as never);
+    const result = await gitListBranches();
+    expect(result).toEqual(['main', 'feature/FOO-1']);
   });
 });
 

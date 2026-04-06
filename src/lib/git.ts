@@ -110,6 +110,12 @@ export async function gitBranchMergedInto(branch: string, target: string): Promi
   }
 }
 
+export async function gitListBranches(): Promise<string[]> {
+  const { stdout } = await execa('git', ['branch', '--list', '--format=%(refname:short)']);
+  if (!stdout.trim()) return [];
+  return stdout.trim().split('\n').filter(Boolean);
+}
+
 export function parseWorktreeList(porcelain: string): WorktreeInfo[] {
   if (!porcelain.trim()) return [];
   const blocks = porcelain.trim().split(/\n\n+/);
