@@ -13,6 +13,7 @@ import {
   gitBranchExistsOnRemote,
   gitBranchMergedInto,
   gitCommitsAheadOf,
+  getGitRoot,
 } from '../lib/git.js';
 
 export function registerRemoveCommand(program: Command): void {
@@ -24,6 +25,7 @@ export function registerRemoveCommand(program: Command): void {
     .action(async (name: string | undefined, opts: { force?: boolean; yes?: boolean }) => {
       if (!name) {
         // Interactive picker mode
+        const gitRoot = await getGitRoot();
         const porcelain = await gitWorktreeList();
         const worktrees = parseWorktreeList(porcelain);
         const nonMain = worktrees.filter((wt) => !wt.isMain && wt.branch !== null);
@@ -110,10 +112,10 @@ export function registerRemoveCommand(program: Command): void {
         const spinner = p.spinner();
         spinner.start(`Removing worktree ${path.basename(pickedWorktree.path)}...`);
         try {
-          await gitWorktreeRemove(pickedWorktree.path, false);
+          await gitWorktreeRemove(pickedWorktree.path, false, gitRoot);
           if (pickedWorktree.branch) {
             try {
-              await gitDeleteBranch(pickedWorktree.branch, true);
+              await gitDeleteBranch(pickedWorktree.branch, true, gitRoot);
             } catch (err: unknown) {
               const msg = err instanceof Error ? err.message : String(err);
               spinner.stop(`Worktree removed, but branch delete failed: ${msg}`);
@@ -124,7 +126,7 @@ export function registerRemoveCommand(program: Command): void {
               process.exit(1);
             }
           }
-          await gitWorktreePrune();
+          await gitWorktreePrune(gitRoot);
           spinner.stop(`Worktree '${path.basename(pickedWorktree.path)}' removed.`);
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : String(err);
@@ -134,6 +136,7 @@ export function registerRemoveCommand(program: Command): void {
         return;
       }
 
+      const gitRoot = await getGitRoot();
       const porcelain = await gitWorktreeList();
       const worktrees = parseWorktreeList(porcelain);
       const target = worktrees.find(
@@ -164,10 +167,10 @@ export function registerRemoveCommand(program: Command): void {
       const spinner = p.spinner();
       spinner.start(`Removing worktree ${name}...`);
       try {
-        await gitWorktreeRemove(target.path, opts.force ?? false);
+        await gitWorktreeRemove(target.path, opts.force ?? false, gitRoot);
         if (target.branch) {
           try {
-            await gitDeleteBranch(target.branch, opts.force ?? false);
+            await gitDeleteBranch(target.branch, opts.force ?? false, gitRoot);
           } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : String(err);
             spinner.stop(`Worktree removed, but branch delete failed: ${msg}`);
@@ -178,7 +181,7 @@ export function registerRemoveCommand(program: Command): void {
             process.exit(1);
           }
         }
-        await gitWorktreePrune();
+        await gitWorktreePrune(gitRoot);
         spinner.stop(`Worktree '${name}' removed.`);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);

@@ -11,6 +11,7 @@ const mockGitWorktreePrune = vi.fn();
 const mockGitBranchExistsOnRemote = vi.fn();
 const mockGitBranchMergedInto = vi.fn();
 const mockGitCommitsAheadOf = vi.fn();
+const mockGetGitRoot = vi.fn();
 
 vi.mock('../lib/git.js', () => ({
   gitWorktreeList: (...args: unknown[]) => mockGitWorktreeList(...args),
@@ -22,6 +23,7 @@ vi.mock('../lib/git.js', () => ({
   gitBranchExistsOnRemote: (...args: unknown[]) => mockGitBranchExistsOnRemote(...args),
   gitBranchMergedInto: (...args: unknown[]) => mockGitBranchMergedInto(...args),
   gitCommitsAheadOf: (...args: unknown[]) => mockGitCommitsAheadOf(...args),
+  getGitRoot: (...args: unknown[]) => mockGetGitRoot(...args),
 }));
 
 // Mock @clack/prompts
@@ -68,6 +70,8 @@ describe('remove command', () => {
     mockGitBranchExistsOnRemote.mockClear();
     mockGitBranchMergedInto.mockClear();
     mockGitCommitsAheadOf.mockClear();
+    mockGetGitRoot.mockClear();
+    mockGetGitRoot.mockResolvedValue('/repo/root');
     mockCancel.mockClear();
     mockNote.mockClear();
     mockSpinnerStart.mockClear();
@@ -108,9 +112,9 @@ describe('remove command', () => {
     await program.parseAsync(['remove', 'my-feat'], { from: 'user' });
 
     // Verify all three git calls were made in order
-    expect(mockGitWorktreeRemove).toHaveBeenCalledWith('/home/user/feat', false);
-    expect(mockGitDeleteBranch).toHaveBeenCalledWith('feature/my-feat', false);
-    expect(mockGitWorktreePrune).toHaveBeenCalled();
+    expect(mockGitWorktreeRemove).toHaveBeenCalledWith('/home/user/feat', false, '/repo/root');
+    expect(mockGitDeleteBranch).toHaveBeenCalledWith('feature/my-feat', false, '/repo/root');
+    expect(mockGitWorktreePrune).toHaveBeenCalledWith('/repo/root');
 
     // Verify delete order: worktreeRemove before deleteBranch
     const worktreeRemoveOrder = mockGitWorktreeRemove.mock.invocationCallOrder[0]!;
@@ -159,9 +163,9 @@ describe('remove command', () => {
     await program.parseAsync(['remove', 'my-feat', '--force'], { from: 'user' });
 
     expect(mockConfirm).toHaveBeenCalled();
-    expect(mockGitWorktreeRemove).toHaveBeenCalledWith('/home/user/feat', true);
-    expect(mockGitDeleteBranch).toHaveBeenCalledWith('feature/my-feat', true);
-    expect(mockGitWorktreePrune).toHaveBeenCalled();
+    expect(mockGitWorktreeRemove).toHaveBeenCalledWith('/home/user/feat', true, '/repo/root');
+    expect(mockGitDeleteBranch).toHaveBeenCalledWith('feature/my-feat', true, '/repo/root');
+    expect(mockGitWorktreePrune).toHaveBeenCalledWith('/repo/root');
   });
 
   it('FORCE DIRTY CONFIRM ABORT: --force on dirty shows confirm; user says no → exit(1), gitWorktreeRemove NOT called', async () => {
@@ -204,9 +208,9 @@ describe('remove command', () => {
     await program.parseAsync(['remove', 'my-feat', '--force', '--yes'], { from: 'user' });
 
     expect(mockConfirm).not.toHaveBeenCalled();
-    expect(mockGitWorktreeRemove).toHaveBeenCalledWith('/home/user/feat', true);
-    expect(mockGitDeleteBranch).toHaveBeenCalledWith('feature/my-feat', true);
-    expect(mockGitWorktreePrune).toHaveBeenCalled();
+    expect(mockGitWorktreeRemove).toHaveBeenCalledWith('/home/user/feat', true, '/repo/root');
+    expect(mockGitDeleteBranch).toHaveBeenCalledWith('feature/my-feat', true, '/repo/root');
+    expect(mockGitWorktreePrune).toHaveBeenCalledWith('/repo/root');
   });
 
   it('NOT FOUND: calls exit(1) and shows error when no matching worktree found', async () => {
@@ -333,9 +337,9 @@ describe('remove command', () => {
 
     await program.parseAsync(['remove'], { from: 'user' });
 
-    expect(mockGitWorktreeRemove).toHaveBeenCalledWith('/home/user/feat-a', false);
-    expect(mockGitDeleteBranch).toHaveBeenCalledWith('feature/feat-a', true);
-    expect(mockGitWorktreePrune).toHaveBeenCalled();
+    expect(mockGitWorktreeRemove).toHaveBeenCalledWith('/home/user/feat-a', false, '/repo/root');
+    expect(mockGitDeleteBranch).toHaveBeenCalledWith('feature/feat-a', true, '/repo/root');
+    expect(mockGitWorktreePrune).toHaveBeenCalledWith('/repo/root');
   });
 
   it('INTERACTIVE CANCEL: p.isCancel returns true → exit 1, gitWorktreeRemove NOT called', async () => {
@@ -389,7 +393,7 @@ describe('remove command', () => {
     await program.parseAsync(['remove'], { from: 'user' });
 
     expect(mockConfirm).not.toHaveBeenCalled();
-    expect(mockGitDeleteBranch).toHaveBeenCalledWith('feature/feat-a', true);
+    expect(mockGitDeleteBranch).toHaveBeenCalledWith('feature/feat-a', true, '/repo/root');
   });
 
   it('INTERACTIVE UNMERGED ACCEPT: confirm shown, user accepts → deleted with force=true', async () => {
@@ -418,7 +422,7 @@ describe('remove command', () => {
     await program.parseAsync(['remove'], { from: 'user' });
 
     expect(mockConfirm).toHaveBeenCalled();
-    expect(mockGitDeleteBranch).toHaveBeenCalledWith('feature/feat-a', true);
+    expect(mockGitDeleteBranch).toHaveBeenCalledWith('feature/feat-a', true, '/repo/root');
   });
 
   it('INTERACTIVE UNMERGED REJECT: confirm shown, user rejects → exit 1, gitWorktreeRemove not called', async () => {
