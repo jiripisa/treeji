@@ -122,9 +122,10 @@ None yet.
 | 260403-nwk | list: restructure columns to 7-column layout (name, branch, ticket, jira status) | 2026-04-03 | ce15da8 | [260403-nwk-list-restructure-columns](./quick/260403-nwk-list-restructure-columns/) |
 | 260403-o4j | list: merge remote column into status column — 6-column layout | 2026-04-03 | d087f93 | [260403-o4j-merge-remote-into-status-column](./quick/260403-o4j-merge-remote-into-status-column/) |
 | 260403-ocn | list: merge jira columns into single jira column with OSC 8 hyperlinks — 5-column layout | 2026-04-03 | 56e6551 | [260403-ocn-merge-jira-columns-with-hyperlink](./quick/260403-ocn-merge-jira-columns-with-hyperlink/) |
+| 260406-8q2 | remove: interactive safe-picker (clean + branch-on-remote) | 2026-04-06 | be7b93a | [260406-8q2-remove-interactive-safe-picker](./quick/260406-8q2-remove-interactive-safe-picker/) |
 
 ## Session Continuity
 
-Last session: 2026-04-03T15:35:34Z
-Stopped at: Completed quick task 260403-ocn: list — merge jira columns with OSC 8 hyperlink
+Last session: 2026-04-06T04:21:02Z
+Stopped at: Completed quick task 260406-8q2: remove — interactive safe-picker
 Resume file: None
