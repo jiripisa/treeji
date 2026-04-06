@@ -12,6 +12,7 @@ import {
   gitWorktreePrune,
   gitBranchExistsOnRemote,
   gitBranchMergedInto,
+  gitCommitsAheadOf,
 } from '../lib/git.js';
 
 export function registerRemoveCommand(program: Command): void {
@@ -27,36 +28,48 @@ export function registerRemoveCommand(program: Command): void {
         const worktrees = parseWorktreeList(porcelain);
         const nonMain = worktrees.filter((wt) => !wt.isMain && wt.branch !== null);
 
+        type CheckResult =
+          | { kind: 'safe'; wt: WorktreeInfo }
+          | { kind: 'blocked'; wt: WorktreeInfo; reasons: string[]; commits: string[] };
+
         // Check each candidate: classify as safe or blocked (dirty / branch not on remote)
         const results = await Promise.all(
-          nonMain.map(async (wt) => {
+          nonMain.map(async (wt): Promise<CheckResult> => {
             const statusOutput = await gitStatusPorcelain(wt.path);
             const isDirty = statusOutput.trim().length > 0;
             const onRemote = await gitBranchExistsOnRemote(wt.branch!);
+            const commits = !onRemote ? await gitCommitsAheadOf(wt.branch!, 'main') : [];
+            // Empty local branch (not on remote, no commits, clean) → safe
+            if (!onRemote && commits.length === 0 && !isDirty) {
+              return { kind: 'safe' as const, wt };
+            }
             const reasons: string[] = [];
             if (isDirty) reasons.push('uncommitted changes');
             if (!onRemote) reasons.push('branch not pushed to remote');
             return reasons.length === 0
               ? { kind: 'safe' as const, wt }
-              : { kind: 'blocked' as const, wt, reasons };
+              : { kind: 'blocked' as const, wt, reasons, commits };
           })
         );
 
         const safeWorktrees: WorktreeInfo[] = [];
-        const blockedWorktrees: Array<{ wt: WorktreeInfo; reasons: string[] }> = [];
+        const blockedWorktrees: Array<{ wt: WorktreeInfo; reasons: string[]; commits: string[] }> = [];
         for (const result of results) {
           if (result.kind === 'safe') {
             safeWorktrees.push(result.wt);
           } else {
-            blockedWorktrees.push({ wt: result.wt, reasons: result.reasons });
+            blockedWorktrees.push({ wt: result.wt, reasons: result.reasons, commits: result.commits });
           }
         }
 
         if (blockedWorktrees.length > 0) {
           console.log('Cannot remove:');
-          for (const { wt, reasons } of blockedWorktrees) {
+          for (const { wt, reasons, commits } of blockedWorktrees) {
             const wtName = path.basename(wt.path);
             console.log(`  ${chalk.yellow(wtName)}  ${chalk.dim('— ' + reasons.join(', '))}`);
+            for (const commit of commits) {
+              console.log(`      ${chalk.dim(commit)}`);
+            }
           }
           console.log('');
         }
