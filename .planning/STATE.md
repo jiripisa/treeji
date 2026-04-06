@@ -125,9 +125,10 @@ None yet.
 | 260406-8q2 | remove: interactive safe-picker (clean + branch-on-remote) | 2026-04-06 | be7b93a | [260406-8q2-remove-interactive-safe-picker](./quick/260406-8q2-remove-interactive-safe-picker/) |
 | 260406-97m | remove: merge-check in interactive picker | 2026-04-06 | 68a908e | [260406-97m-remove-picker-merge-check](./quick/260406-97m-remove-picker-merge-check/) |
 | 260406-9ea | remove: show blocked worktrees before interactive picker | 2026-04-06 | b2c00ab | [260406-9ea-remove-show-blocked-worktrees](./quick/260406-9ea-remove-show-blocked-worktrees/) |
+| 260406-9nj | remove: empty local branch safe + blocked shows commit list | 2026-04-06 | 45f501d | [260406-9nj-remove-empty-local-branch-safe](./quick/260406-9nj-remove-empty-local-branch-safe/) |
 
 ## Session Continuity
 
-Last session: 2026-04-06T04:49:00Z
-Stopped at: Completed quick task 260406-9ea: remove — show blocked worktrees before interactive picker
+Last session: 2026-04-06T05:01:15Z
+Stopped at: Completed quick task 260406-9nj: remove — empty local branch safe + blocked shows commit list
 Resume file: None
