@@ -123,9 +123,10 @@ None yet.
 | 260403-o4j | list: merge remote column into status column — 6-column layout | 2026-04-03 | d087f93 | [260403-o4j-merge-remote-into-status-column](./quick/260403-o4j-merge-remote-into-status-column/) |
 | 260403-ocn | list: merge jira columns into single jira column with OSC 8 hyperlinks — 5-column layout | 2026-04-03 | 56e6551 | [260403-ocn-merge-jira-columns-with-hyperlink](./quick/260403-ocn-merge-jira-columns-with-hyperlink/) |
 | 260406-8q2 | remove: interactive safe-picker (clean + branch-on-remote) | 2026-04-06 | be7b93a | [260406-8q2-remove-interactive-safe-picker](./quick/260406-8q2-remove-interactive-safe-picker/) |
+| 260406-97m | remove: merge-check in interactive picker | 2026-04-06 | 68a908e | [260406-97m-remove-picker-merge-check](./quick/260406-97m-remove-picker-merge-check/) |
 
 ## Session Continuity
 
-Last session: 2026-04-06T04:21:02Z
-Stopped at: Completed quick task 260406-8q2: remove — interactive safe-picker
+Last session: 2026-04-06T06:42:00Z
+Stopped at: Completed quick task 260406-97m: remove — merge-check in interactive picker
 Resume file: None
