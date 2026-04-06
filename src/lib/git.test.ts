@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { parseWorktreeList, gitAheadBehind } from './git.js';
+import { parseWorktreeList, gitAheadBehind, gitBranchExistsOnRemote } from './git.js';
 
 // Mock execa module for gitAheadBehind tests
 vi.mock('execa', () => {
@@ -86,5 +86,35 @@ describe('gitAheadBehind', () => {
     mockExeca.mockResolvedValue({ stdout: '3\t1\n' } as never);
     const result = await gitAheadBehind('/some/path');
     expect(result).toEqual({ ahead: 3, behind: 1 });
+  });
+});
+
+describe('gitBranchExistsOnRemote', () => {
+  beforeEach(() => {
+    mockExeca.mockReset();
+  });
+
+  it('returns true when stdout is non-empty (branch exists on remote)', async () => {
+    mockExeca.mockResolvedValue({ stdout: '  origin/feature/PROJ-123  \n' } as never);
+    const result = await gitBranchExistsOnRemote('feature/PROJ-123');
+    expect(result).toBe(true);
+  });
+
+  it('returns false when stdout is empty (branch not on remote)', async () => {
+    mockExeca.mockResolvedValue({ stdout: '' } as never);
+    const result = await gitBranchExistsOnRemote('feature/local-only');
+    expect(result).toBe(false);
+  });
+
+  it('returns false when stdout is whitespace-only', async () => {
+    mockExeca.mockResolvedValue({ stdout: '   ' } as never);
+    const result = await gitBranchExistsOnRemote('feature/local-only');
+    expect(result).toBe(false);
+  });
+
+  it('returns false when execa throws', async () => {
+    mockExeca.mockRejectedValue(new Error('git command failed'));
+    const result = await gitBranchExistsOnRemote('feature/some-branch');
+    expect(result).toBe(false);
   });
 });

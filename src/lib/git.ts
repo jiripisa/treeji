@@ -62,6 +62,15 @@ export async function gitLastCommitRelativeDate(worktreePath: string): Promise<s
   return stdout.trim() || 'no commits';
 }
 
+export async function gitBranchExistsOnRemote(branch: string): Promise<boolean> {
+  try {
+    const { stdout } = await execa('git', ['branch', '-r', '--list', `origin/${branch}`]);
+    return stdout.trim().length > 0;
+  } catch {
+    return false;
+  }
+}
+
 export function parseWorktreeList(porcelain: string): WorktreeInfo[] {
   if (!porcelain.trim()) return [];
   const blocks = porcelain.trim().split(/\n\n+/);
