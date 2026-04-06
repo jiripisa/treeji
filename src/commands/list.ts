@@ -11,7 +11,7 @@ import {
 import { fetchIssueStatuses } from '../lib/jira.js';
 import { loadConfig } from '../lib/config.js';
 
-function extractTicketKey(branch: string | null | undefined): string | null {
+export function extractTicketKey(branch: string | null | undefined): string | null {
   if (!branch) return null;
   const match = branch.match(/([A-Za-z]+-\d+)/i);
   return match ? match[1].toUpperCase() : null;
