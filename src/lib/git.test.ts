@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { parseWorktreeList, gitAheadBehind, gitBranchExistsOnRemote, gitBranchMergedInto, gitCommitsAheadOf, gitWorktreeRemove, gitWorktreePrune, gitDeleteBranch } from './git.js';
+import { parseWorktreeList, gitAheadBehind, gitBranchExistsOnRemote, gitBranchMergedInto, gitCommitsAheadOf, gitWorktreeRemove, gitWorktreePrune, gitDeleteBranch, gitBranchExists, gitWorktreeAdd } from './git.js';
 
 // Mock execa module for gitAheadBehind tests
 vi.mock('execa', () => {
@@ -218,5 +218,56 @@ describe('gitCommitsAheadOf', () => {
     mockExeca.mockRejectedValue(new Error('git command failed'));
     const result = await gitCommitsAheadOf('feature/my-feat', 'main');
     expect(result).toEqual([]);
+  });
+});
+
+describe('gitBranchExists', () => {
+  beforeEach(() => {
+    mockExeca.mockReset();
+  });
+
+  it('returns true when execa resolves with exit 0 (branch exists)', async () => {
+    mockExeca.mockResolvedValue({} as never);
+    const result = await gitBranchExists('feature/PROJ-123');
+    expect(result).toBe(true);
+    expect(mockExeca).toHaveBeenCalledWith('git', ['rev-parse', '--verify', 'feature/PROJ-123']);
+  });
+
+  it('returns false when execa rejects with non-zero exit (branch does not exist)', async () => {
+    mockExeca.mockRejectedValue(Object.assign(new Error('fatal: Needed a single revision'), { exitCode: 128 }));
+    const result = await gitBranchExists('feature/new-branch');
+    expect(result).toBe(false);
+  });
+});
+
+describe('gitWorktreeAdd', () => {
+  beforeEach(() => {
+    mockExeca.mockReset();
+  });
+
+  it('calls worktree add without -b when branch already exists, returns { existed: true }', async () => {
+    // First call: rev-parse --verify resolves (branch exists)
+    mockExeca.mockResolvedValueOnce({} as never);
+    // Second call: worktree add resolves
+    mockExeca.mockResolvedValueOnce({} as never);
+
+    const result = await gitWorktreeAdd('/path/to/worktree', 'feature/PROJ-123');
+
+    expect(result).toEqual({ existed: true });
+    expect(mockExeca).toHaveBeenNthCalledWith(1, 'git', ['rev-parse', '--verify', 'feature/PROJ-123']);
+    expect(mockExeca).toHaveBeenNthCalledWith(2, 'git', ['worktree', 'add', '/path/to/worktree', 'feature/PROJ-123']);
+  });
+
+  it('calls worktree add with -b when branch does not exist, returns { existed: false }', async () => {
+    // First call: rev-parse --verify rejects (branch does not exist)
+    mockExeca.mockRejectedValueOnce(Object.assign(new Error('fatal: Needed a single revision'), { exitCode: 128 }));
+    // Second call: worktree add -b resolves
+    mockExeca.mockResolvedValueOnce({} as never);
+
+    const result = await gitWorktreeAdd('/path/to/worktree', 'feature/new-branch');
+
+    expect(result).toEqual({ existed: false });
+    expect(mockExeca).toHaveBeenNthCalledWith(1, 'git', ['rev-parse', '--verify', 'feature/new-branch']);
+    expect(mockExeca).toHaveBeenNthCalledWith(2, 'git', ['worktree', 'add', '-b', 'feature/new-branch', '/path/to/worktree']);
   });
 });

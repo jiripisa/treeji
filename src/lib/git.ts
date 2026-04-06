@@ -19,8 +19,23 @@ export async function gitWorktreeList(): Promise<string> {
   }
 }
 
-export async function gitWorktreeAdd(worktreePath: string, branch: string): Promise<void> {
-  await execa('git', ['worktree', 'add', '-b', branch, worktreePath]);
+export async function gitBranchExists(branch: string): Promise<boolean> {
+  try {
+    await execa('git', ['rev-parse', '--verify', branch]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function gitWorktreeAdd(worktreePath: string, branch: string): Promise<{ existed: boolean }> {
+  const existed = await gitBranchExists(branch);
+  if (existed) {
+    await execa('git', ['worktree', 'add', worktreePath, branch]);
+  } else {
+    await execa('git', ['worktree', 'add', '-b', branch, worktreePath]);
+  }
+  return { existed };
 }
 
 export async function gitWorktreeRemove(worktreePath: string, force = false, gitRoot?: string): Promise<void> {
