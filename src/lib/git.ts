@@ -71,6 +71,15 @@ export async function gitBranchExistsOnRemote(branch: string): Promise<boolean> 
   }
 }
 
+export async function gitCommitsAheadOf(branch: string, base: string): Promise<string[]> {
+  try {
+    const { stdout } = await execa('git', ['log', `${base}..${branch}`, '--oneline']);
+    return stdout.trim() ? stdout.trim().split('\n') : [];
+  } catch {
+    return [];
+  }
+}
+
 export async function gitBranchMergedInto(branch: string, target: string): Promise<boolean> {
   try {
     await execa('git', ['merge-base', '--is-ancestor', branch, target]);

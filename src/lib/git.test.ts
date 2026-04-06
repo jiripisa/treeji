@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { parseWorktreeList, gitAheadBehind, gitBranchExistsOnRemote, gitBranchMergedInto } from './git.js';
+import { parseWorktreeList, gitAheadBehind, gitBranchExistsOnRemote, gitBranchMergedInto, gitCommitsAheadOf } from './git.js';
 
 // Mock execa module for gitAheadBehind tests
 vi.mock('execa', () => {
@@ -140,5 +140,29 @@ describe('gitBranchMergedInto', () => {
     mockExeca.mockRejectedValue(new Error('some git error'));
     const result = await gitBranchMergedInto('feature/my-feat', 'main');
     expect(result).toBe(false);
+  });
+});
+
+describe('gitCommitsAheadOf', () => {
+  beforeEach(() => {
+    mockExeca.mockReset();
+  });
+
+  it('returns array of commit lines when stdout has two lines', async () => {
+    mockExeca.mockResolvedValue({ stdout: 'abc123 Fix bug\ndef456 Add thing\n' } as never);
+    const result = await gitCommitsAheadOf('feature/my-feat', 'main');
+    expect(result).toEqual(['abc123 Fix bug', 'def456 Add thing']);
+  });
+
+  it('returns empty array when stdout is empty (no commits ahead)', async () => {
+    mockExeca.mockResolvedValue({ stdout: '' } as never);
+    const result = await gitCommitsAheadOf('feature/my-feat', 'main');
+    expect(result).toEqual([]);
+  });
+
+  it('returns empty array when execa throws (safe default)', async () => {
+    mockExeca.mockRejectedValue(new Error('git command failed'));
+    const result = await gitCommitsAheadOf('feature/my-feat', 'main');
+    expect(result).toEqual([]);
   });
 });
