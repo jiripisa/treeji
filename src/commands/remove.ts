@@ -10,6 +10,7 @@ import {
   gitDeleteBranch,
   gitWorktreePrune,
   gitBranchExistsOnRemote,
+  gitBranchMergedInto,
 } from '../lib/git.js';
 
 export function registerRemoveCommand(program: Command): void {
@@ -59,13 +60,26 @@ export function registerRemoveCommand(program: Command): void {
         }
 
         const pickedWorktree = selected as WorktreeInfo;
+
+        const isMerged = await gitBranchMergedInto(pickedWorktree.branch!, 'main');
+        if (!isMerged) {
+          const confirmDelete = await p.confirm({
+            message: `Branch '${pickedWorktree.branch}' is not merged into main. Delete anyway?`,
+            initialValue: false,
+          });
+          if (p.isCancel(confirmDelete) || !confirmDelete) {
+            p.cancel('Aborted.');
+            process.exit(1);
+          }
+        }
+
         const spinner = p.spinner();
         spinner.start(`Removing worktree ${path.basename(pickedWorktree.path)}...`);
         try {
           await gitWorktreeRemove(pickedWorktree.path, false);
           if (pickedWorktree.branch) {
             try {
-              await gitDeleteBranch(pickedWorktree.branch, false);
+              await gitDeleteBranch(pickedWorktree.branch, true);
             } catch (err: unknown) {
               const msg = err instanceof Error ? err.message : String(err);
               spinner.stop(`Worktree removed, but branch delete failed: ${msg}`);

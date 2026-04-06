@@ -9,6 +9,7 @@ const mockGitWorktreeRemove = vi.fn();
 const mockGitDeleteBranch = vi.fn();
 const mockGitWorktreePrune = vi.fn();
 const mockGitBranchExistsOnRemote = vi.fn();
+const mockGitBranchMergedInto = vi.fn();
 
 vi.mock('../lib/git.js', () => ({
   gitWorktreeList: (...args: unknown[]) => mockGitWorktreeList(...args),
@@ -18,6 +19,7 @@ vi.mock('../lib/git.js', () => ({
   gitDeleteBranch: (...args: unknown[]) => mockGitDeleteBranch(...args),
   gitWorktreePrune: (...args: unknown[]) => mockGitWorktreePrune(...args),
   gitBranchExistsOnRemote: (...args: unknown[]) => mockGitBranchExistsOnRemote(...args),
+  gitBranchMergedInto: (...args: unknown[]) => mockGitBranchMergedInto(...args),
 }));
 
 // Mock @clack/prompts
@@ -61,6 +63,7 @@ describe('remove command', () => {
     mockGitDeleteBranch.mockClear();
     mockGitWorktreePrune.mockClear();
     mockGitBranchExistsOnRemote.mockClear();
+    mockGitBranchMergedInto.mockClear();
     mockCancel.mockClear();
     mockNote.mockClear();
     mockSpinnerStart.mockClear();
@@ -280,6 +283,7 @@ describe('remove command', () => {
     const firstWorktree = { path: '/home/user/feat-a', head: 'def456', branch: 'feature/feat-a', isMain: false };
     mockSelect.mockResolvedValue(firstWorktree);
     mockIsCancel.mockReturnValue(false);
+    mockGitBranchMergedInto.mockResolvedValue(true);
     mockGitWorktreeRemove.mockResolvedValue(undefined);
     mockGitDeleteBranch.mockResolvedValue(undefined);
     mockGitWorktreePrune.mockResolvedValue(undefined);
@@ -310,6 +314,7 @@ describe('remove command', () => {
     mockGitBranchExistsOnRemote.mockResolvedValue(true);
     mockSelect.mockResolvedValue(safeWorktree);
     mockIsCancel.mockReturnValue(false);
+    mockGitBranchMergedInto.mockResolvedValue(true);
     mockGitWorktreeRemove.mockResolvedValue(undefined);
     mockGitDeleteBranch.mockResolvedValue(undefined);
     mockGitWorktreePrune.mockResolvedValue(undefined);
@@ -322,7 +327,7 @@ describe('remove command', () => {
     await program.parseAsync(['remove'], { from: 'user' });
 
     expect(mockGitWorktreeRemove).toHaveBeenCalledWith('/home/user/feat-a', false);
-    expect(mockGitDeleteBranch).toHaveBeenCalledWith('feature/feat-a', false);
+    expect(mockGitDeleteBranch).toHaveBeenCalledWith('feature/feat-a', true);
     expect(mockGitWorktreePrune).toHaveBeenCalled();
   });
 
@@ -350,5 +355,90 @@ describe('remove command', () => {
 
     expect(mockGitWorktreeRemove).not.toHaveBeenCalled();
     expect(mockCancel).toHaveBeenCalledWith('Aborted.');
+  });
+
+  it('INTERACTIVE MERGED: no confirm shown, gitDeleteBranch called with force=true', async () => {
+    const safeWorktree = { path: '/home/user/feat-a', head: 'def456', branch: 'feature/feat-a', isMain: false };
+
+    mockGitWorktreeList.mockResolvedValue('');
+    mockParseWorktreeList.mockReturnValue([
+      { path: '/home/user/repo', head: 'abc123', branch: 'main', isMain: true },
+      safeWorktree,
+    ]);
+    mockGitStatusPorcelain.mockResolvedValue('');
+    mockGitBranchExistsOnRemote.mockResolvedValue(true);
+    mockSelect.mockResolvedValue(safeWorktree);
+    mockIsCancel.mockReturnValue(false);
+    mockGitBranchMergedInto.mockResolvedValue(true);
+    mockGitWorktreeRemove.mockResolvedValue(undefined);
+    mockGitDeleteBranch.mockResolvedValue(undefined);
+    mockGitWorktreePrune.mockResolvedValue(undefined);
+
+    const { registerRemoveCommand } = await import('./remove.js');
+    const program = new Command();
+    program.exitOverride();
+    registerRemoveCommand(program);
+
+    await program.parseAsync(['remove'], { from: 'user' });
+
+    expect(mockConfirm).not.toHaveBeenCalled();
+    expect(mockGitDeleteBranch).toHaveBeenCalledWith('feature/feat-a', true);
+  });
+
+  it('INTERACTIVE UNMERGED ACCEPT: confirm shown, user accepts → deleted with force=true', async () => {
+    const safeWorktree = { path: '/home/user/feat-a', head: 'def456', branch: 'feature/feat-a', isMain: false };
+
+    mockGitWorktreeList.mockResolvedValue('');
+    mockParseWorktreeList.mockReturnValue([
+      { path: '/home/user/repo', head: 'abc123', branch: 'main', isMain: true },
+      safeWorktree,
+    ]);
+    mockGitStatusPorcelain.mockResolvedValue('');
+    mockGitBranchExistsOnRemote.mockResolvedValue(true);
+    mockSelect.mockResolvedValue(safeWorktree);
+    mockIsCancel.mockReturnValue(false);
+    mockGitBranchMergedInto.mockResolvedValue(false);
+    mockConfirm.mockResolvedValue(true);
+    mockGitWorktreeRemove.mockResolvedValue(undefined);
+    mockGitDeleteBranch.mockResolvedValue(undefined);
+    mockGitWorktreePrune.mockResolvedValue(undefined);
+
+    const { registerRemoveCommand } = await import('./remove.js');
+    const program = new Command();
+    program.exitOverride();
+    registerRemoveCommand(program);
+
+    await program.parseAsync(['remove'], { from: 'user' });
+
+    expect(mockConfirm).toHaveBeenCalled();
+    expect(mockGitDeleteBranch).toHaveBeenCalledWith('feature/feat-a', true);
+  });
+
+  it('INTERACTIVE UNMERGED REJECT: confirm shown, user rejects → exit 1, gitWorktreeRemove not called', async () => {
+    const safeWorktree = { path: '/home/user/feat-a', head: 'def456', branch: 'feature/feat-a', isMain: false };
+
+    mockGitWorktreeList.mockResolvedValue('');
+    mockParseWorktreeList.mockReturnValue([
+      { path: '/home/user/repo', head: 'abc123', branch: 'main', isMain: true },
+      safeWorktree,
+    ]);
+    mockGitStatusPorcelain.mockResolvedValue('');
+    mockGitBranchExistsOnRemote.mockResolvedValue(true);
+    mockSelect.mockResolvedValue(safeWorktree);
+    mockIsCancel.mockReturnValue(false);
+    mockGitBranchMergedInto.mockResolvedValue(false);
+    mockConfirm.mockResolvedValue(false);
+
+    const { registerRemoveCommand } = await import('./remove.js');
+    const program = new Command();
+    program.exitOverride();
+    registerRemoveCommand(program);
+
+    await expect(
+      program.parseAsync(['remove'], { from: 'user' })
+    ).rejects.toThrow('exit 1');
+
+    expect(mockConfirm).toHaveBeenCalled();
+    expect(mockGitWorktreeRemove).not.toHaveBeenCalled();
   });
 });
