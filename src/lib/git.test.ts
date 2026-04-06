@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { parseWorktreeList, gitAheadBehind, gitBranchExistsOnRemote, gitBranchMergedInto, gitCommitsAheadOf } from './git.js';
+import { parseWorktreeList, gitAheadBehind, gitBranchExistsOnRemote, gitBranchMergedInto, gitCommitsAheadOf, gitWorktreeRemove, gitWorktreePrune, gitDeleteBranch } from './git.js';
 
 // Mock execa module for gitAheadBehind tests
 vi.mock('execa', () => {
@@ -140,6 +140,60 @@ describe('gitBranchMergedInto', () => {
     mockExeca.mockRejectedValue(new Error('some git error'));
     const result = await gitBranchMergedInto('feature/my-feat', 'main');
     expect(result).toBe(false);
+  });
+});
+
+describe('gitWorktreeRemove / gitDeleteBranch / gitWorktreePrune with gitRoot', () => {
+  beforeEach(() => {
+    mockExeca.mockReset();
+  });
+
+  it('gitWorktreeRemove with gitRoot prepends -C flag', async () => {
+    mockExeca.mockResolvedValue({} as never);
+    await gitWorktreeRemove('/wt', false, '/root');
+    expect(mockExeca).toHaveBeenCalledWith('git', ['-C', '/root', 'worktree', 'remove', '/wt']);
+  });
+
+  it('gitWorktreeRemove with gitRoot and force appends --force after path', async () => {
+    mockExeca.mockResolvedValue({} as never);
+    await gitWorktreeRemove('/wt', true, '/root');
+    expect(mockExeca).toHaveBeenCalledWith('git', ['-C', '/root', 'worktree', 'remove', '/wt', '--force']);
+  });
+
+  it('gitWorktreeRemove without gitRoot omits -C flag (backward compat)', async () => {
+    mockExeca.mockResolvedValue({} as never);
+    await gitWorktreeRemove('/wt', false);
+    expect(mockExeca).toHaveBeenCalledWith('git', ['worktree', 'remove', '/wt']);
+  });
+
+  it('gitWorktreePrune with gitRoot prepends -C flag', async () => {
+    mockExeca.mockResolvedValue({} as never);
+    await gitWorktreePrune('/root');
+    expect(mockExeca).toHaveBeenCalledWith('git', ['-C', '/root', 'worktree', 'prune']);
+  });
+
+  it('gitWorktreePrune without gitRoot omits -C flag (backward compat)', async () => {
+    mockExeca.mockResolvedValue({} as never);
+    await gitWorktreePrune();
+    expect(mockExeca).toHaveBeenCalledWith('git', ['worktree', 'prune']);
+  });
+
+  it('gitDeleteBranch with gitRoot and force=true prepends -C and uses -D', async () => {
+    mockExeca.mockResolvedValue({} as never);
+    await gitDeleteBranch('feat', true, '/root');
+    expect(mockExeca).toHaveBeenCalledWith('git', ['-C', '/root', 'branch', '-D', 'feat']);
+  });
+
+  it('gitDeleteBranch with gitRoot and force=false prepends -C and uses -d', async () => {
+    mockExeca.mockResolvedValue({} as never);
+    await gitDeleteBranch('feat', false, '/root');
+    expect(mockExeca).toHaveBeenCalledWith('git', ['-C', '/root', 'branch', '-d', 'feat']);
+  });
+
+  it('gitDeleteBranch without gitRoot omits -C flag (backward compat)', async () => {
+    mockExeca.mockResolvedValue({} as never);
+    await gitDeleteBranch('feat', false);
+    expect(mockExeca).toHaveBeenCalledWith('git', ['branch', '-d', 'feat']);
   });
 });
 
