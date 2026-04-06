@@ -94,3 +94,14 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 2. Git Worktree Core | 4/5 | In Progress|  |
 | 3. JIRA Integration | 3/3 | Complete   | 2026-04-02 |
 | 4. Interactive Picker | 2/2 | Complete   | 2026-04-02 |
+
+### Phase 04.1: Status dashboard — unified view of worktrees, branches, and JIRA tickets (INSERTED)
+
+**Goal:** User can run `treeji status` and see a unified, grouped dashboard of all worktrees, local branches, and JIRA tickets — classified by their connection state and rendered in compact or full-table format
+**Requirements**: TBD
+**Depends on:** Phase 4
+**Plans:** 2 plans
+
+Plans:
+- [ ] 04.1-01-PLAN.md — Foundation: gitListBranches() in git.ts + fetchAssignedIssues includeAll param in jira.ts
+- [ ] 04.1-02-PLAN.md — Status command: status.ts orchestration, classify, render, register in index.ts
