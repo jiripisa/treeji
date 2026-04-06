@@ -45,6 +45,7 @@ vi.mock('@clack/prompts', () => ({
 describe('remove command', () => {
   let stderrSpy: ReturnType<typeof vi.spyOn>;
   let exitSpy: ReturnType<typeof vi.spyOn>;
+  let logSpy: ReturnType<typeof vi.spyOn>;
 
   class ExitError extends Error {
     code: number;
@@ -77,11 +78,13 @@ describe('remove command', () => {
     exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null) => {
       throw new ExitError(typeof code === 'number' ? code : 0);
     });
+    logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
   });
 
   afterEach(() => {
     stderrSpy.mockRestore();
     exitSpy.mockRestore();
+    logSpy.mockRestore();
   });
 
   it('CLEAN DELETE: calls gitWorktreeRemove, gitDeleteBranch, gitWorktreePrune in order for clean worktree', async () => {
@@ -440,5 +443,179 @@ describe('remove command', () => {
 
     expect(mockConfirm).toHaveBeenCalled();
     expect(mockGitWorktreeRemove).not.toHaveBeenCalled();
+  });
+
+  it('BLOCKED DIRTY: dirty worktree is printed in blocked list with "uncommitted changes" and does NOT appear in picker', async () => {
+    const dirtyWorktree = { path: '/home/user/dirty-feat', head: 'aaa111', branch: 'feature/dirty', isMain: false };
+    const safeWorktree = { path: '/home/user/safe-feat', head: 'bbb222', branch: 'feature/safe', isMain: false };
+
+    mockGitWorktreeList.mockResolvedValue('');
+    mockParseWorktreeList.mockReturnValue([
+      { path: '/home/user/repo', head: 'abc123', branch: 'main', isMain: true },
+      dirtyWorktree,
+      safeWorktree,
+    ]);
+    mockGitStatusPorcelain.mockImplementation((p: string) =>
+      p.includes('dirty') ? Promise.resolve('M file.ts\n') : Promise.resolve('')
+    );
+    mockGitBranchExistsOnRemote.mockResolvedValue(true);
+    mockSelect.mockResolvedValue(safeWorktree);
+    mockIsCancel.mockReturnValue(false);
+    mockGitBranchMergedInto.mockResolvedValue(true);
+    mockGitWorktreeRemove.mockResolvedValue(undefined);
+    mockGitDeleteBranch.mockResolvedValue(undefined);
+    mockGitWorktreePrune.mockResolvedValue(undefined);
+
+    const { registerRemoveCommand } = await import('./remove.js');
+    const program = new Command();
+    program.exitOverride();
+    registerRemoveCommand(program);
+
+    await program.parseAsync(['remove'], { from: 'user' });
+
+    const logCalls = logSpy.mock.calls.map((args) => String(args[0]));
+    expect(logCalls.some((line) => line.includes('Cannot remove:'))).toBe(true);
+    expect(logCalls.some((line) => line.includes('dirty-feat') && line.includes('uncommitted changes'))).toBe(true);
+
+    const selectCall = mockSelect.mock.calls[0]![0] as { options: { label: string }[] };
+    expect(selectCall.options.map((o) => o.label)).not.toContain('dirty-feat');
+    expect(selectCall.options.map((o) => o.label)).toContain('safe-feat');
+  });
+
+  it('BLOCKED NO REMOTE: clean but branch not on remote → printed with "branch not pushed to remote" and not in picker', async () => {
+    const localOnlyWorktree = { path: '/home/user/local-feat', head: 'ccc333', branch: 'feature/local', isMain: false };
+    const safeWorktree = { path: '/home/user/safe-feat', head: 'ddd444', branch: 'feature/safe', isMain: false };
+
+    mockGitWorktreeList.mockResolvedValue('');
+    mockParseWorktreeList.mockReturnValue([
+      { path: '/home/user/repo', head: 'abc123', branch: 'main', isMain: true },
+      localOnlyWorktree,
+      safeWorktree,
+    ]);
+    mockGitStatusPorcelain.mockResolvedValue(''); // all clean
+    mockGitBranchExistsOnRemote.mockImplementation((branch: string) =>
+      Promise.resolve(branch === 'feature/safe')
+    );
+    mockSelect.mockResolvedValue(safeWorktree);
+    mockIsCancel.mockReturnValue(false);
+    mockGitBranchMergedInto.mockResolvedValue(true);
+    mockGitWorktreeRemove.mockResolvedValue(undefined);
+    mockGitDeleteBranch.mockResolvedValue(undefined);
+    mockGitWorktreePrune.mockResolvedValue(undefined);
+
+    const { registerRemoveCommand } = await import('./remove.js');
+    const program = new Command();
+    program.exitOverride();
+    registerRemoveCommand(program);
+
+    await program.parseAsync(['remove'], { from: 'user' });
+
+    const logCalls = logSpy.mock.calls.map((args) => String(args[0]));
+    expect(logCalls.some((line) => line.includes('Cannot remove:'))).toBe(true);
+    expect(logCalls.some((line) => line.includes('local-feat') && line.includes('branch not pushed to remote'))).toBe(true);
+
+    const selectCall = mockSelect.mock.calls[0]![0] as { options: { label: string }[] };
+    expect(selectCall.options.map((o) => o.label)).not.toContain('local-feat');
+    expect(selectCall.options.map((o) => o.label)).toContain('safe-feat');
+  });
+
+  it('BLOCKED BOTH: dirty AND not on remote → printed with both reasons joined by ", "', async () => {
+    const bothBlockedWorktree = { path: '/home/user/both-blocked', head: 'eee555', branch: 'feature/both', isMain: false };
+    const safeWorktree = { path: '/home/user/safe-feat', head: 'fff666', branch: 'feature/safe', isMain: false };
+
+    mockGitWorktreeList.mockResolvedValue('');
+    mockParseWorktreeList.mockReturnValue([
+      { path: '/home/user/repo', head: 'abc123', branch: 'main', isMain: true },
+      bothBlockedWorktree,
+      safeWorktree,
+    ]);
+    mockGitStatusPorcelain.mockImplementation((p: string) =>
+      p.includes('both-blocked') ? Promise.resolve('M file.ts\n') : Promise.resolve('')
+    );
+    mockGitBranchExistsOnRemote.mockImplementation((branch: string) =>
+      Promise.resolve(branch === 'feature/safe')
+    );
+    mockSelect.mockResolvedValue(safeWorktree);
+    mockIsCancel.mockReturnValue(false);
+    mockGitBranchMergedInto.mockResolvedValue(true);
+    mockGitWorktreeRemove.mockResolvedValue(undefined);
+    mockGitDeleteBranch.mockResolvedValue(undefined);
+    mockGitWorktreePrune.mockResolvedValue(undefined);
+
+    const { registerRemoveCommand } = await import('./remove.js');
+    const program = new Command();
+    program.exitOverride();
+    registerRemoveCommand(program);
+
+    await program.parseAsync(['remove'], { from: 'user' });
+
+    const logCalls = logSpy.mock.calls.map((args) => String(args[0]));
+    expect(logCalls.some((line) =>
+      line.includes('both-blocked') &&
+      line.includes('uncommitted changes') &&
+      line.includes('branch not pushed to remote')
+    )).toBe(true);
+  });
+
+  it('NO BLOCKED: all safe worktrees → no "Cannot remove:" header printed, picker shown as before', async () => {
+    const safeWorktreeA = { path: '/home/user/feat-a', head: 'aaa111', branch: 'feature/feat-a', isMain: false };
+    const safeWorktreeB = { path: '/home/user/feat-b', head: 'bbb222', branch: 'feature/feat-b', isMain: false };
+
+    mockGitWorktreeList.mockResolvedValue('');
+    mockParseWorktreeList.mockReturnValue([
+      { path: '/home/user/repo', head: 'abc123', branch: 'main', isMain: true },
+      safeWorktreeA,
+      safeWorktreeB,
+    ]);
+    mockGitStatusPorcelain.mockResolvedValue('');
+    mockGitBranchExistsOnRemote.mockResolvedValue(true);
+    mockSelect.mockResolvedValue(safeWorktreeA);
+    mockIsCancel.mockReturnValue(false);
+    mockGitBranchMergedInto.mockResolvedValue(true);
+    mockGitWorktreeRemove.mockResolvedValue(undefined);
+    mockGitDeleteBranch.mockResolvedValue(undefined);
+    mockGitWorktreePrune.mockResolvedValue(undefined);
+
+    const { registerRemoveCommand } = await import('./remove.js');
+    const program = new Command();
+    program.exitOverride();
+    registerRemoveCommand(program);
+
+    await program.parseAsync(['remove'], { from: 'user' });
+
+    const logCalls = logSpy.mock.calls.map((args) => String(args[0]));
+    expect(logCalls.some((line) => line.includes('Cannot remove:'))).toBe(false);
+    expect(mockSelect).toHaveBeenCalledOnce();
+  });
+
+  it('ALL BLOCKED NO SAFE: only blocked worktrees → blocked list printed, then "No worktrees can be safely removed"', async () => {
+    const dirtyWorktree = { path: '/home/user/dirty', head: 'aaa111', branch: 'feature/dirty', isMain: false };
+    const localWorktree = { path: '/home/user/local', head: 'bbb222', branch: 'feature/local', isMain: false };
+
+    mockGitWorktreeList.mockResolvedValue('');
+    mockParseWorktreeList.mockReturnValue([
+      { path: '/home/user/repo', head: 'abc123', branch: 'main', isMain: true },
+      dirtyWorktree,
+      localWorktree,
+    ]);
+    mockGitStatusPorcelain.mockImplementation((p: string) =>
+      p.includes('dirty') ? Promise.resolve('M file.ts\n') : Promise.resolve('')
+    );
+    mockGitBranchExistsOnRemote.mockResolvedValue(false);
+
+    const { registerRemoveCommand } = await import('./remove.js');
+    const program = new Command();
+    program.exitOverride();
+    registerRemoveCommand(program);
+
+    await expect(
+      program.parseAsync(['remove'], { from: 'user' })
+    ).rejects.toThrow('exit 0');
+
+    const logCalls = logSpy.mock.calls.map((args) => String(args[0]));
+    expect(logCalls.some((line) => line.includes('Cannot remove:'))).toBe(true);
+    expect(logCalls.some((line) => line.includes('dirty') || line.includes('local'))).toBe(true);
+    expect(mockOutro).toHaveBeenCalledWith('No worktrees can be safely removed');
+    expect(mockSelect).not.toHaveBeenCalled();
   });
 });
