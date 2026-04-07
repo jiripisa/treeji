@@ -225,6 +225,52 @@ describe('fetchIssueStatuses', () => {
   });
 });
 
+describe('withRetry 401 detection (D-09)', () => {
+  beforeEach(() => {
+    vi.mocked(Version3Client).mockClear();
+    mockLoadConfig.mockClear();
+    mockGetToken.mockClear();
+    mockGetIssue.mockClear();
+    mockSearchForIssuesUsingJqlEnhancedSearchPost.mockClear();
+
+    mockLoadConfig.mockReturnValue({ host: 'https://jira.example.com', email: 'user@example.com' });
+    mockGetToken.mockReturnValue('test-token');
+  });
+
+  it('401 error includes treeji configure instruction', async () => {
+    mockGetIssue.mockRejectedValue(new Error('Request failed with status code 401'));
+
+    const { fetchIssue } = await import('./jira.js');
+    await expect(fetchIssue('TEST-1')).rejects.toThrow(/treeji configure/);
+  });
+
+  it('Unauthorized error includes treeji configure instruction', async () => {
+    mockGetIssue.mockRejectedValue(new Error('Unauthorized'));
+
+    const { fetchIssue } = await import('./jira.js');
+    await expect(fetchIssue('TEST-1')).rejects.toThrow(/treeji configure/);
+  });
+
+  it('401 errors are not retried', async () => {
+    mockGetIssue.mockRejectedValue(new Error('401 Unauthorized'));
+
+    const { fetchIssue } = await import('./jira.js');
+    await expect(fetchIssue('TEST-1')).rejects.toThrow();
+    expect(mockGetIssue).toHaveBeenCalledTimes(1);
+  });
+
+  it('429 errors still retry (not broken by 401 detection)', async () => {
+    mockGetIssue
+      .mockRejectedValueOnce(new Error('429 Too Many Requests'))
+      .mockResolvedValueOnce({ fields: { summary: 'Test', status: { name: 'Open' } } });
+
+    const { fetchIssue } = await import('./jira.js');
+    const result = await fetchIssue('TEST-1');
+    expect(result.summary).toBe('Test');
+    expect(mockGetIssue).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe('fetchAssignedIssues', () => {
   beforeEach(() => {
     vi.mocked(Version3Client).mockClear();
