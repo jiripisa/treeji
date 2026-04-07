@@ -6,6 +6,7 @@ import { getGitRoot, gitWorktreeAdd } from '../lib/git.js';
 import { toSlug } from '../lib/slug.js';
 import { colorStatus } from './list.js';
 import { maybeSymlinkIdea } from '../lib/worktree-hooks.js';
+import { promptBranchType } from '../lib/branch-type.js';
 
 export function registerPickCommand(program: Command): void {
   program
@@ -55,19 +56,7 @@ export function registerPickCommand(program: Command): void {
       }
 
       // Step 4: Prompt for branch type (per D-02)
-      const typeResult = await p.text({
-        message: 'Branch type',
-        placeholder: 'feature',
-        validate: (v) => (!v ? 'Branch type cannot be empty' : undefined),
-      });
-
-      if (p.isCancel(typeResult)) {
-        p.cancel('Cancelled.');
-        process.exit(0);
-        return;
-      }
-
-      const type = typeResult as string;
+      const type = await promptBranchType();
 
       // Step 5: Create worktree using selected issue data (no second fetchIssue call — per D-04)
       try {
@@ -76,7 +65,7 @@ export function registerPickCommand(program: Command): void {
         // Empty slug fallback: use ticket key alone when summary contains only special chars
         const ticketSlug = summarySlug ? `${selected.key}-${summarySlug}` : selected.key;
         const worktreePath = path.resolve(gitRoot, '..', ticketSlug);
-        const branch = `${type}/${ticketSlug}`;
+        const branch = type ? `${type}/${ticketSlug}` : ticketSlug;
 
         const spinner2 = p.spinner();
         spinner2.start(`Creating worktree ${ticketSlug}...`);

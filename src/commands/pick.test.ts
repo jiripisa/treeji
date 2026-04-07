@@ -31,19 +31,24 @@ vi.mock('../lib/worktree-hooks.js', () => ({
   maybeSymlinkIdea: (...args: unknown[]) => mockMaybeSymlinkIdea(...args),
 }));
 
+// Mock branch-type helper
+const mockPromptBranchType = vi.fn();
+
+vi.mock('../lib/branch-type.js', () => ({
+  promptBranchType: (...args: unknown[]) => mockPromptBranchType(...args),
+}));
+
 // Mock @clack/prompts
 const mockCancel = vi.fn();
 const mockOutro = vi.fn();
 const mockSpinnerStart = vi.fn();
 const mockSpinnerStop = vi.fn();
 const mockSelect = vi.fn();
-const mockText = vi.fn();
 const mockIsCancel = vi.fn(() => false);
 
 vi.mock('@clack/prompts', () => ({
   spinner: vi.fn(() => ({ start: mockSpinnerStart, stop: mockSpinnerStop })),
   select: (...args: unknown[]) => mockSelect(...args),
-  text: (...args: unknown[]) => mockText(...args),
   isCancel: vi.fn(() => false),
   cancel: (...args: unknown[]) => mockCancel(...args),
   outro: (...args: unknown[]) => mockOutro(...args),
@@ -66,12 +71,12 @@ describe('pick command', () => {
     mockToSlug.mockClear();
     mockFetchAssignedIssues.mockClear();
     mockMaybeSymlinkIdea.mockClear();
+    mockPromptBranchType.mockClear();
     mockCancel.mockClear();
     mockOutro.mockClear();
     mockSpinnerStart.mockClear();
     mockSpinnerStop.mockClear();
     mockSelect.mockClear();
-    mockText.mockClear();
     mockIsCancel.mockClear();
     vi.mocked(clackMock.isCancel).mockClear();
 
@@ -80,7 +85,7 @@ describe('pick command', () => {
     mockGitWorktreeAdd.mockResolvedValue({ existed: false });
     mockFetchAssignedIssues.mockResolvedValue(sampleIssues);
     mockSelect.mockResolvedValue(sampleIssues[0]);
-    mockText.mockResolvedValue('feature');
+    mockPromptBranchType.mockResolvedValue('feature');
     mockToSlug.mockImplementation((input: string) => {
       const slugs: Record<string, string> = {
         'Fix login page': 'fix-login-page',
@@ -101,7 +106,7 @@ describe('pick command', () => {
     stderrSpy.mockRestore();
   });
 
-  it('SUCCESS: correct ticket selected → fetchAssignedIssues called, p.select shown, p.text shown, gitWorktreeAdd called with correct path and branch', async () => {
+  it('SUCCESS: correct ticket selected → fetchAssignedIssues called, p.select shown, promptBranchType called, gitWorktreeAdd called with correct path and branch', async () => {
     const { registerPickCommand } = await import('./pick.js');
     const program = new Command();
     program.exitOverride();
@@ -111,12 +116,29 @@ describe('pick command', () => {
 
     expect(mockFetchAssignedIssues).toHaveBeenCalled();
     expect(mockSelect).toHaveBeenCalled();
-    expect(mockText).toHaveBeenCalled();
+    expect(mockPromptBranchType).toHaveBeenCalled();
     expect(mockGitWorktreeAdd).toHaveBeenCalledWith(
       '/home/user/PROJ-123-fix-login-page',
       'feature/PROJ-123-fix-login-page',
     );
     expect(mockOutro).toHaveBeenCalledWith('Branch: feature/PROJ-123-fix-login-page');
+  });
+
+  it('NONE TYPE: when promptBranchType returns empty string, branch name is just the ticketSlug (no prefix)', async () => {
+    mockPromptBranchType.mockResolvedValue('');
+
+    const { registerPickCommand } = await import('./pick.js');
+    const program = new Command();
+    program.exitOverride();
+    registerPickCommand(program);
+
+    await program.parseAsync(['pick'], { from: 'user' });
+
+    expect(mockGitWorktreeAdd).toHaveBeenCalledWith(
+      '/home/user/PROJ-123-fix-login-page',
+      'PROJ-123-fix-login-page',
+    );
+    expect(mockOutro).toHaveBeenCalledWith('Branch: PROJ-123-fix-login-page');
   });
 
   it('EMPTY STATE: issues.length === 0 → p.outro called with "No assigned open tickets found.", gitWorktreeAdd NOT called', async () => {
@@ -138,37 +160,6 @@ describe('pick command', () => {
     vi.mocked(clackMock.isCancel).mockImplementation((value) => value === mockSelect.mock.results[0]?.value);
     const cancelSymbol = Symbol('cancel');
     mockSelect.mockResolvedValue(cancelSymbol);
-    vi.mocked(clackMock.isCancel).mockImplementation((v) => v === cancelSymbol);
-
-    class ExitError extends Error {
-      code: number;
-      constructor(code: number) {
-        super(`exit ${code}`);
-        this.code = code;
-      }
-    }
-    const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code) => {
-      throw new ExitError(Number(code ?? 0));
-    });
-
-    const { registerPickCommand } = await import('./pick.js');
-    const program = new Command();
-    program.exitOverride();
-    registerPickCommand(program);
-
-    await expect(
-      program.parseAsync(['pick'], { from: 'user' }),
-    ).rejects.toThrow('exit 0');
-
-    expect(mockCancel).toHaveBeenCalledWith('Cancelled.');
-    expect(mockGitWorktreeAdd).not.toHaveBeenCalled();
-
-    exitSpy.mockRestore();
-  });
-
-  it('CANCEL ON TYPE: p.isCancel returns false for select, true for text result → p.cancel("Cancelled.") called, process.exit(0), gitWorktreeAdd NOT called', async () => {
-    const cancelSymbol = Symbol('cancel');
-    mockText.mockResolvedValue(cancelSymbol);
     vi.mocked(clackMock.isCancel).mockImplementation((v) => v === cancelSymbol);
 
     class ExitError extends Error {
@@ -260,7 +251,7 @@ describe('pick command', () => {
       if (input === '!!!') return '';
       return input;
     });
-    mockText.mockResolvedValue('bugfix');
+    mockPromptBranchType.mockResolvedValue('bugfix');
 
     const { registerPickCommand } = await import('./pick.js');
     const program = new Command();
