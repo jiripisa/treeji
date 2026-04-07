@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-04-02)
 Phase: 04.1
 Plan: Not started
 Status: Phase complete — ready for verification
-Last activity: 2026-04-06
+Last activity: 2026-04-07 - Completed quick task 260407-eaz: Symlink .idea directory in new worktrees
 
 Progress: [░░░░░░░░░░] 0%
 
