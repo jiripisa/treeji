@@ -5,12 +5,14 @@ import { getGitRoot, gitWorktreeAdd } from '../lib/git.js';
 import { toSlug, validateSlug } from '../lib/slug.js';
 import { fetchIssue } from '../lib/jira.js';
 import { maybeSymlinkIdea } from '../lib/worktree-hooks.js';
+import { promptBranchType } from '../lib/branch-type.js';
 
 export function registerCreateCommand(program: Command): void {
   program
-    .command('create <slug> <type>')
+    .command('create <slug> [type]')
     .description('Create a worktree — JIRA key (PROJ-123) or manual slug, branch {type}/{slug}')
-    .action(async (slug: string, type: string) => {
+    .action(async (slug: string, typeArg: string | undefined) => {
+      const type = typeArg !== undefined ? typeArg : await promptBranchType();
       const JIRA_KEY_RE = /^[A-Z]+-\d+$/;
 
       if (JIRA_KEY_RE.test(slug)) {
@@ -26,7 +28,7 @@ export function registerCreateCommand(program: Command): void {
           spinner.stop(`Ticket: ${issue.summary}`);
 
           const worktreePath = path.resolve(gitRoot, '..', ticketSlug);
-          const branch = `${type}/${ticketSlug}`;
+          const branch = type ? `${type}/${ticketSlug}` : ticketSlug;
 
           process.stderr.write(`Creating: ${branch}  →  ${worktreePath}\n`);
           const spinner2 = p.spinner();
@@ -58,8 +60,8 @@ export function registerCreateCommand(program: Command): void {
         const gitRoot = await getGitRoot();
         const worktreePath = path.resolve(gitRoot, '..', cleanSlug);
 
-        // D-07, CLI-03: branch name is {type}/{cleanSlug}
-        const branch = `${type}/${cleanSlug}`;
+        // D-07, CLI-03: branch name is {type}/{cleanSlug} or just cleanSlug when type is empty
+        const branch = type ? `${type}/${cleanSlug}` : cleanSlug;
 
         process.stderr.write(`Creating: ${branch}  →  ${worktreePath}\n`);
         const spinner = p.spinner();

@@ -46,6 +46,13 @@ vi.mock('../lib/worktree-hooks.js', () => ({
   maybeSymlinkIdea: (...args: unknown[]) => mockMaybeSymlinkIdea(...args),
 }));
 
+// Mock branch-type helper
+const mockPromptBranchType = vi.fn();
+
+vi.mock('../lib/branch-type.js', () => ({
+  promptBranchType: (...args: unknown[]) => mockPromptBranchType(...args),
+}));
+
 describe('create command', () => {
   let stderrSpy: ReturnType<typeof vi.spyOn>;
 
@@ -61,6 +68,7 @@ describe('create command', () => {
     mockSpinnerStop.mockClear();
     mockFetchIssue.mockClear();
     mockMaybeSymlinkIdea.mockClear();
+    mockPromptBranchType.mockClear();
 
     stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
 
@@ -445,5 +453,79 @@ describe('create command', () => {
     await program.parseAsync(['create', 'PROJ-123', 'feature'], { from: 'user' });
 
     expect(mockMaybeSymlinkIdea).toHaveBeenCalledWith('/home/user/myrepo', '/home/user/PROJ-123-fix-login-page');
+  });
+
+  describe('OPTIONAL TYPE ARG', () => {
+    it('PROMPT SHOWN: when type arg omitted, promptBranchType is called', async () => {
+      mockToSlug.mockReturnValue('my-feature');
+      mockValidateSlug.mockReturnValue(undefined);
+      mockPromptBranchType.mockResolvedValue('fix');
+
+      const { registerCreateCommand } = await import('./create.js');
+      const program = new Command();
+      program.exitOverride();
+      registerCreateCommand(program);
+
+      await program.parseAsync(['create', 'my-feature'], { from: 'user' });
+
+      expect(mockPromptBranchType).toHaveBeenCalled();
+    });
+
+    it('BRANCH NAME: when type omitted and promptBranchType returns "fix", branch is fix/slug', async () => {
+      mockToSlug.mockReturnValue('my-feature');
+      mockValidateSlug.mockReturnValue(undefined);
+      mockPromptBranchType.mockResolvedValue('fix');
+
+      const { registerCreateCommand } = await import('./create.js');
+      const program = new Command();
+      program.exitOverride();
+      registerCreateCommand(program);
+
+      await program.parseAsync(['create', 'my-feature'], { from: 'user' });
+
+      expect(mockGitWorktreeAdd).toHaveBeenCalledWith(
+        '/home/user/my-feature',
+        'fix/my-feature',
+      );
+    });
+
+    it('NONE TYPE (MANUAL PATH): when type omitted and promptBranchType returns "", branch is just slug without prefix', async () => {
+      mockToSlug.mockReturnValue('my-feature');
+      mockValidateSlug.mockReturnValue(undefined);
+      mockPromptBranchType.mockResolvedValue('');
+
+      const { registerCreateCommand } = await import('./create.js');
+      const program = new Command();
+      program.exitOverride();
+      registerCreateCommand(program);
+
+      await program.parseAsync(['create', 'my-feature'], { from: 'user' });
+
+      expect(mockGitWorktreeAdd).toHaveBeenCalledWith(
+        '/home/user/my-feature',
+        'my-feature',
+      );
+    });
+
+    it('NONE TYPE (JIRA PATH): when type omitted and promptBranchType returns "", branch is just ticketSlug without prefix', async () => {
+      mockFetchIssue.mockResolvedValue({ key: 'PROJ-123', summary: 'Fix login page', statusName: 'To Do' });
+      mockToSlug.mockImplementation((input: string) => {
+        if (input === 'Fix login page') return 'fix-login-page';
+        return input;
+      });
+      mockPromptBranchType.mockResolvedValue('');
+
+      const { registerCreateCommand } = await import('./create.js');
+      const program = new Command();
+      program.exitOverride();
+      registerCreateCommand(program);
+
+      await program.parseAsync(['create', 'PROJ-123'], { from: 'user' });
+
+      expect(mockGitWorktreeAdd).toHaveBeenCalledWith(
+        '/home/user/PROJ-123-fix-login-page',
+        'PROJ-123-fix-login-page',
+      );
+    });
   });
 });

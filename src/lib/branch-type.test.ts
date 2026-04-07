@@ -4,13 +4,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const mockSelect = vi.fn();
 const mockText = vi.fn();
 const mockCancel = vi.fn();
-const mockIsCancel = vi.fn(() => false);
+const mockIsCancel = vi.fn((_v?: unknown) => false);
 
 vi.mock('@clack/prompts', () => ({
-  select: (...args: unknown[]) => mockSelect(...args),
-  text: (...args: unknown[]) => mockText(...args),
-  cancel: (...args: unknown[]) => mockCancel(...args),
-  isCancel: (...args: unknown[]) => mockIsCancel(...args),
+  select: (args: unknown) => mockSelect(args),
+  text: (args: unknown) => mockText(args),
+  cancel: (args: unknown) => mockCancel(args),
+  isCancel: (args: unknown) => mockIsCancel(args),
 }));
 
 describe('BRANCH_TYPE_OPTIONS', () => {
