@@ -1,6 +1,5 @@
 import { Command } from 'commander';
 import * as p from '@clack/prompts';
-import open from 'open';
 import { loadConfig, saveConfig } from '../lib/config.js';
 import { setToken } from '../lib/keychain.js';
 import { validateJiraCredentials } from '../lib/jira-validate.js';
@@ -65,6 +64,7 @@ export function registerConfigureCommand(program: Command): void {
 
         let browserOpened = false;
         try {
+          const { default: open } = await import('open');
           await open(ATLASSIAN_TOKEN_URL);
           browserOpened = true;
         } catch {
