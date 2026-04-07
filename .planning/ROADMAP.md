@@ -105,3 +105,13 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 Plans:
 - [x] 04.1-01-PLAN.md — Foundation: gitListBranches() in git.ts + fetchAssignedIssues includeAll param in jira.ts
 - [x] 04.1-02-PLAN.md — Status command: status.ts orchestration, classify, render, register in index.ts
+
+### Phase 5: Simplify JIRA connection — OAuth or browser-based auth without manual API token
+
+**Goal:** User runs `treeji configure` and the browser opens to the Atlassian API token page automatically — no need to know or navigate to the token URL manually. Auth failures show clear re-configure guidance.
+**Requirements**: AUTH-01, AUTH-02, AUTH-03
+**Depends on:** Phase 4
+**Plans:** 1 plan
+
+Plans:
+- [ ] 05-01-PLAN.md — Browser-guided token setup in configure command + 401 detection in JIRA client
