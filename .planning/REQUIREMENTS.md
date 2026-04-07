@@ -33,6 +33,12 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **CLI-05**: Slug generation handles Czech diacritics, emoji, and special characters correctly (using slugify library)
 - [x] **CLI-06**: CLI installable globally via `npm install -g mafcli`
 
+### Auth UX
+
+- [x] **AUTH-01**: Interactive configure auto-opens browser to Atlassian API token management page
+- [x] **AUTH-02**: Headless/SSH fallback prints token URL with manual instructions when browser cannot open
+- [x] **AUTH-03**: 401 JIRA API errors show clear message directing user to run `treeji configure` again
+
 ## v2 Requirements
 
 Deferred to future release. Tracked but not in current roadmap.
@@ -53,7 +59,7 @@ Deferred to future release. Tracked but not in current roadmap.
 |---------|--------|
 | GUI / TUI interactive interface | CLI only — personal tool, simplicity over polish |
 | JIRA Server / Data Center | Only JIRA Cloud — personal tool, one backend sufficient |
-| OAuth 2.0 authentication | API token (Basic Auth) sufficient for personal use |
+| OAuth 2.0 authentication | API token (Basic Auth) with browser-guided setup sufficient for personal use |
 | Git operations beyond worktrees | Not a general git tool — focused on worktree workflow |
 | PR creation / CI integration | Out of scope for worktree management tool |
 
@@ -80,6 +86,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CLI-04 | Phase 2 | Complete |
 | CLI-05 | Phase 2 | Complete |
 | CLI-06 | Phase 1 | Complete |
+| AUTH-01 | Phase 5 | Complete |
+| AUTH-02 | Phase 5 | Complete |
+| AUTH-03 | Phase 5 | Complete |
 
 **Coverage:**
 - v1 requirements: 17 total
