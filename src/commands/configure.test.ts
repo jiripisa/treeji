@@ -22,6 +22,10 @@ vi.mock('../lib/jira-validate.js', () => ({
   validateJiraCredentials: (...args: unknown[]) => mockValidateJiraCredentials(...args),
 }));
 
+// Mock open package to avoid real browser launches
+const mockOpen = vi.fn().mockResolvedValue(undefined);
+vi.mock('open', () => ({ default: (...args: unknown[]) => mockOpen(...args) }));
+
 // Mock @clack/prompts to avoid interactive TTY requirements
 const mockNote = vi.fn();
 const mockOutro = vi.fn();
@@ -59,6 +63,8 @@ describe('JIRA-01: configure command', () => {
     mockIsCancel.mockClear();
     mockIsCancel.mockReturnValue(false);
     mockLoadConfig.mockReturnValue({ host: undefined, email: undefined });
+    mockOpen.mockClear();
+    mockOpen.mockResolvedValue(undefined);
   });
 
   describe('non-interactive mode (--url --email --token flags)', () => {
@@ -82,6 +88,19 @@ describe('JIRA-01: configure command', () => {
       // This test verifies the command registers without error on partial flags
       const { registerConfigureCommand } = await import('./configure.js');
       expect(typeof registerConfigureCommand).toBe('function');
+    });
+
+    it('non-interactive mode does not open browser', async () => {
+      mockValidateJiraCredentials.mockResolvedValue({ success: true, displayName: 'Jane Dev' });
+
+      const { registerConfigureCommand } = await import('./configure.js');
+      const program = new Command();
+      program.exitOverride();
+      registerConfigureCommand(program);
+
+      await program.parseAsync(['configure', '--url', 'https://org.atlassian.net', '--email', 'user@example.com', '--token', 'tok'], { from: 'user' });
+
+      expect(mockOpen).not.toHaveBeenCalled();
     });
   });
 
@@ -135,6 +154,46 @@ describe('JIRA-01: configure command', () => {
       expect(mockSaveConfig).not.toHaveBeenCalled();
 
       exitSpy.mockRestore();
+    });
+
+    it('opens browser to Atlassian token page after email prompt (D-05)', async () => {
+      mockValidateJiraCredentials.mockResolvedValue({ success: true, displayName: 'Jane Dev' });
+      mockText
+        .mockResolvedValueOnce('https://org.atlassian.net')
+        .mockResolvedValueOnce('user@example.com');
+      mockPassword.mockResolvedValueOnce('mytoken');
+
+      const { registerConfigureCommand } = await import('./configure.js');
+      const program = new Command();
+      program.exitOverride();
+      registerConfigureCommand(program);
+
+      await program.parseAsync(['configure'], { from: 'user' });
+
+      expect(mockOpen).toHaveBeenCalledWith('https://id.atlassian.com/manage-profile/security/api-tokens');
+      const noteCall = mockNote.mock.calls.find((call) => String(call[1]).includes('Browser opened'));
+      expect(noteCall).toBeDefined();
+      expect(String(noteCall?.[1])).toContain('Browser opened');
+    });
+
+    it('falls back to printed URL when browser open fails (D-05)', async () => {
+      mockOpen.mockRejectedValueOnce(new Error('spawn failed'));
+      mockValidateJiraCredentials.mockResolvedValue({ success: true, displayName: 'Jane Dev' });
+      mockText
+        .mockResolvedValueOnce('https://org.atlassian.net')
+        .mockResolvedValueOnce('user@example.com');
+      mockPassword.mockResolvedValueOnce('mytoken');
+
+      const { registerConfigureCommand } = await import('./configure.js');
+      const program = new Command();
+      program.exitOverride();
+      registerConfigureCommand(program);
+
+      await program.parseAsync(['configure'], { from: 'user' });
+
+      const noteCall = mockNote.mock.calls.find((call) => String(call[1]).includes('Open in your browser'));
+      expect(noteCall).toBeDefined();
+      expect(String(noteCall?.[0])).toContain('https://id.atlassian.com/manage-profile/security/api-tokens');
     });
   });
 

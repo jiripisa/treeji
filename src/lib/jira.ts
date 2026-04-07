@@ -24,6 +24,10 @@ async function withRetry<T>(fn: () => Promise<T>, maxAttempts = 3): Promise<T> {
       return await fn();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
+      const is401 = msg.includes('401') || msg.toLowerCase().includes('unauthorized');
+      if (is401) {
+        throw new Error('JIRA authentication failed (401 Unauthorized). Run `treeji configure` again to update your API token.');
+      }
       const is429 = msg.includes('429') || msg.toLowerCase().includes('too many requests');
       if (!is429 || attempt === maxAttempts) throw err;
       await new Promise((r) => setTimeout(r, delay));

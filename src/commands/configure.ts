@@ -1,8 +1,11 @@
 import { Command } from 'commander';
 import * as p from '@clack/prompts';
+import open from 'open';
 import { loadConfig, saveConfig } from '../lib/config.js';
 import { setToken } from '../lib/keychain.js';
 import { validateJiraCredentials } from '../lib/jira-validate.js';
+
+const ATLASSIAN_TOKEN_URL = 'https://id.atlassian.com/manage-profile/security/api-tokens';
 
 export function registerConfigureCommand(program: Command): void {
   program
@@ -58,6 +61,26 @@ export function registerConfigureCommand(program: Command): void {
         if (p.isCancel(emailResult)) {
           p.cancel('Cancelled.');
           process.exit(0);
+        }
+
+        let browserOpened = false;
+        try {
+          await open(ATLASSIAN_TOKEN_URL);
+          browserOpened = true;
+        } catch {
+          browserOpened = false;
+        }
+
+        if (browserOpened) {
+          p.note(
+            'Opening browser to Atlassian API token page.\nCreate a new token, copy it, then paste it below.',
+            'Browser opened'
+          );
+        } else {
+          p.note(
+            `Open this URL to create an API token:\n${ATLASSIAN_TOKEN_URL}\n\nCopy the token, then paste it below.`,
+            'Open in your browser'
+          );
         }
 
         const tokenResult = await p.password({

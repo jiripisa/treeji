@@ -27,6 +27,7 @@
     "conf": "^15.1.0",
     "execa": "^9.6.1",
     "jira.js": "^5.3.1",
+    "open": "^11.0.0",
     "slugify": "^1.6.9"
   },
   "devDependencies": {
