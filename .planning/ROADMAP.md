@@ -114,4 +114,4 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] 05-01-PLAN.md — Browser-guided token setup in configure command + 401 detection in JIRA client
+- [x] 05-01-PLAN.md — Browser-guided token setup in configure command + 401 detection in JIRA client

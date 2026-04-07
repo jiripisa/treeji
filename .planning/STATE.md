@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: verifying
-stopped_at: Phase 5 context gathered
-last_updated: "2026-04-07T09:49:31.077Z"
-last_activity: "2026-04-07 - Completed quick task 260407-eaz: Symlink .idea directory in new worktrees"
+stopped_at: Completed 05-01-PLAN.md
+last_updated: "2026-04-07T10:46:08.259Z"
+last_activity: 2026-04-07
 progress:
   total_phases: 6
-  completed_phases: 5
-  total_plans: 14
-  completed_plans: 14
+  completed_phases: 6
+  total_plans: 15
+  completed_plans: 15
   percent: 0
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-02)
 
 **Core value:** Rychlé vytvoření worktree z JIRA ticketu jedním příkazem — bez ručního kopírování názvů, zakládání branchí a navigace po souborovém systému.
-**Current focus:** Phase 04.1 — status-dashboard
+**Current focus:** Phase 05 — simplify-jira-connection-oauth-or-browser-based-auth-without-manual-api-token
 
 ## Current Position
 
-Phase: 04.1
-Plan: Not started
+Phase: 05 (simplify-jira-connection-oauth-or-browser-based-auth-without-manual-api-token) — EXECUTING
+Plan: 1 of 1
 Status: Phase complete — ready for verification
-Last activity: 2026-04-07 - Completed quick task 260407-eaz: Symlink .idea directory in new worktrees
+Last activity: 2026-04-07
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -66,6 +66,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 04-interactive-picker P02 | 2min | 2 tasks | 3 files |
 | Phase 04.1-status-dashboard P01 | 2 | 2 tasks | 4 files |
 | Phase 04.1-status-dashboard-unified-view-of-worktrees-branches-and-jira-tickets P02 | 3 | 2 tasks | 4 files |
+| Phase 05 P01 | 3min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -108,6 +109,8 @@ Recent decisions affecting current work:
 - [Phase 04.1-status-dashboard-unified-view-of-worktrees-branches-and-jira-tickets]: classify() pure function — all I/O happens in command action, classify() receives data arrays
 - [Phase 04.1-status-dashboard-unified-view-of-worktrees-branches-and-jira-tickets]: Pass 3 (state 6) skips main/master worktrees when their branch is filtered by D-01 logic
 - [Phase 04.1-status-dashboard-unified-view-of-worktrees-branches-and-jira-tickets]: extractTicketKey exported from list.ts for reuse in status.ts — no duplication
+- [Phase 05]: open package (v11 ESM-native) added as production dep for browser-guided token setup
+- [Phase 05]: 401 detection in withRetry before 429 check — immediate throw with treeji configure guidance, no retries
 
 ### Pending Todos
 
@@ -145,6 +148,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-07T09:49:31.073Z
-Stopped at: Phase 5 context gathered
-Resume file: .planning/phases/05-simplify-jira-connection-oauth-or-browser-based-auth-without-manual-api-token/05-CONTEXT.md
+Last session: 2026-04-07T10:46:08.257Z
+Stopped at: Completed 05-01-PLAN.md
+Resume file: None
