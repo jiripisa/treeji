@@ -39,6 +39,13 @@ vi.mock('../lib/jira.js', () => ({
   fetchIssue: (...args: unknown[]) => mockFetchIssue(...args),
 }));
 
+// Mock worktree-hooks
+const mockMaybeSymlinkIdea = vi.fn();
+
+vi.mock('../lib/worktree-hooks.js', () => ({
+  maybeSymlinkIdea: (...args: unknown[]) => mockMaybeSymlinkIdea(...args),
+}));
+
 describe('create command', () => {
   let stderrSpy: ReturnType<typeof vi.spyOn>;
 
@@ -53,8 +60,11 @@ describe('create command', () => {
     mockSpinnerStart.mockClear();
     mockSpinnerStop.mockClear();
     mockFetchIssue.mockClear();
+    mockMaybeSymlinkIdea.mockClear();
 
     stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+
+    mockMaybeSymlinkIdea.mockResolvedValue(undefined);
 
     // Default: git root returns a known path
     mockGetGitRoot.mockResolvedValue('/home/user/myrepo');
@@ -404,5 +414,36 @@ describe('create command', () => {
     const stderrOutput = stderrSpy.mock.calls.map((c: unknown[]) => c[0] as string).join('');
     expect(stderrOutput).toContain('feature/my-feature');
     expect(stderrOutput).toContain('/home/user/my-feature');
+  });
+
+  it('SYMLINK HOOK: calls maybeSymlinkIdea after worktree creation (manual path)', async () => {
+    mockToSlug.mockReturnValue('my-feature');
+    mockValidateSlug.mockReturnValue(undefined);
+
+    const { registerCreateCommand } = await import('./create.js');
+    const program = new Command();
+    program.exitOverride();
+    registerCreateCommand(program);
+
+    await program.parseAsync(['create', 'my-feature', 'feature'], { from: 'user' });
+
+    expect(mockMaybeSymlinkIdea).toHaveBeenCalledWith('/home/user/myrepo', '/home/user/my-feature');
+  });
+
+  it('SYMLINK HOOK (JIRA PATH): calls maybeSymlinkIdea after worktree creation', async () => {
+    mockFetchIssue.mockResolvedValue({ key: 'PROJ-123', summary: 'Fix login page', statusName: 'To Do' });
+    mockToSlug.mockImplementation((input: string) => {
+      if (input === 'Fix login page') return 'fix-login-page';
+      return input;
+    });
+
+    const { registerCreateCommand } = await import('./create.js');
+    const program = new Command();
+    program.exitOverride();
+    registerCreateCommand(program);
+
+    await program.parseAsync(['create', 'PROJ-123', 'feature'], { from: 'user' });
+
+    expect(mockMaybeSymlinkIdea).toHaveBeenCalledWith('/home/user/myrepo', '/home/user/PROJ-123-fix-login-page');
   });
 });

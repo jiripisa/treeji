@@ -24,6 +24,13 @@ vi.mock('../lib/jira.js', () => ({
   fetchAssignedIssues: (...args: unknown[]) => mockFetchAssignedIssues(...args),
 }));
 
+// Mock worktree-hooks
+const mockMaybeSymlinkIdea = vi.fn();
+
+vi.mock('../lib/worktree-hooks.js', () => ({
+  maybeSymlinkIdea: (...args: unknown[]) => mockMaybeSymlinkIdea(...args),
+}));
+
 // Mock @clack/prompts
 const mockCancel = vi.fn();
 const mockOutro = vi.fn();
@@ -58,6 +65,7 @@ describe('pick command', () => {
     mockGitWorktreeAdd.mockClear();
     mockToSlug.mockClear();
     mockFetchAssignedIssues.mockClear();
+    mockMaybeSymlinkIdea.mockClear();
     mockCancel.mockClear();
     mockOutro.mockClear();
     mockSpinnerStart.mockClear();
@@ -83,6 +91,8 @@ describe('pick command', () => {
     });
     // Default: isCancel returns false (not cancelled)
     vi.mocked(clackMock.isCancel).mockImplementation(() => false);
+
+    mockMaybeSymlinkIdea.mockResolvedValue(undefined);
 
     stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
   });
@@ -325,5 +335,16 @@ describe('pick command', () => {
 
     const stderrOutput = stderrSpy.mock.calls.map((c: unknown[]) => c[0] as string).join('');
     expect(stderrOutput).not.toMatch(/50 tickets|first 50/);
+  });
+
+  it('SYMLINK HOOK: calls maybeSymlinkIdea after worktree creation', async () => {
+    const { registerPickCommand } = await import('./pick.js');
+    const program = new Command();
+    program.exitOverride();
+    registerPickCommand(program);
+
+    await program.parseAsync(['pick'], { from: 'user' });
+
+    expect(mockMaybeSymlinkIdea).toHaveBeenCalledWith('/home/user/myrepo', '/home/user/PROJ-123-fix-login-page');
   });
 });

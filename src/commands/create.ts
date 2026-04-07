@@ -4,6 +4,7 @@ import path from 'node:path';
 import { getGitRoot, gitWorktreeAdd } from '../lib/git.js';
 import { toSlug, validateSlug } from '../lib/slug.js';
 import { fetchIssue } from '../lib/jira.js';
+import { maybeSymlinkIdea } from '../lib/worktree-hooks.js';
 
 export function registerCreateCommand(program: Command): void {
   program
@@ -33,6 +34,7 @@ export function registerCreateCommand(program: Command): void {
           const { existed } = await gitWorktreeAdd(worktreePath, branch);
           spinner2.stop(`Worktree created at ${worktreePath}`);
           if (existed) process.stderr.write(`Using existing branch: ${branch}\n`);
+          await maybeSymlinkIdea(gitRoot, worktreePath);
           p.outro(`Branch: ${branch}`);
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
@@ -65,6 +67,7 @@ export function registerCreateCommand(program: Command): void {
         const { existed: branchExisted } = await gitWorktreeAdd(worktreePath, branch);
         spinner.stop(`Worktree created at ${worktreePath}`);
         if (branchExisted) process.stderr.write(`Using existing branch: ${branch}\n`);
+        await maybeSymlinkIdea(gitRoot, worktreePath);
         p.outro(`Branch: ${branch}`);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
