@@ -139,9 +139,10 @@ None yet.
 | 260406-9nj | remove: empty local branch safe + blocked shows commit list | 2026-04-06 | 45f501d | [260406-9nj-remove-empty-local-branch-safe](./quick/260406-9nj-remove-empty-local-branch-safe/) |
 | 260406-b1q | remove: gitRoot CWD fix — thread -C flag through remove flow | 2026-04-06 | 6530436 | [260406-b1q-remove-gitroot-cwd-fix](./quick/260406-b1q-remove-gitroot-cwd-fix/) |
 | 260406-g61 | worktree add existing branch — gitBranchExists + gitWorktreeAdd fix | 2026-04-06 | f4faeea | [260406-g61-worktree-add-existing-branch](./quick/260406-g61-worktree-add-existing-branch/) |
+| 260407-eaz | symlink .idea directory in new worktrees — maybeSymlinkIdea hook | 2026-04-07 | 08a25ab | [260407-eaz-symlink-idea-directory-in-new-worktrees-](./quick/260407-eaz-symlink-idea-directory-in-new-worktrees-/) |
 
 ## Session Continuity
 
-Last session: 2026-04-06T10:49:27.086Z
-Stopped at: Completed 04.1-02-PLAN.md
+Last session: 2026-04-07T10:23:00Z
+Stopped at: Completed quick task 260407-eaz
 Resume file: None
