@@ -1,38 +1,50 @@
-import { stat, symlink } from 'node:fs/promises';
+import { stat, symlink, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import * as p from '@clack/prompts';
+import { loadRepoConfig } from './repo-config.js';
 
-export async function maybeSymlinkIdea(gitRoot: string, worktreePath: string): Promise<void> {
-  const ideaSource = path.join(gitRoot, '.idea');
-  const ideaTarget = path.join(worktreePath, '.idea');
-
-  // 1. Check if .idea exists in main repo
+async function exists(filePath: string): Promise<boolean> {
   try {
-    await stat(ideaSource);
+    await stat(filePath);
+    return true;
   } catch {
-    // .idea does not exist in main repo — nothing to do
-    return;
+    return false;
+  }
+}
+
+export async function maybeCreateSymlinks(gitRoot: string, worktreePath: string): Promise<void> {
+  const config = await loadRepoConfig(gitRoot);
+  const entries = config.symlinks;
+  if (!entries || entries.length === 0) return;
+
+  // Filter to valid entries: source exists in main repo, target does not exist in worktree
+  const valid: string[] = [];
+  for (const entry of entries) {
+    const source = path.join(gitRoot, entry);
+    const target = path.join(worktreePath, entry);
+    if (!(await exists(source))) continue;
+    if (await exists(target)) continue;
+    valid.push(entry);
   }
 
-  // 2. Check if .idea already exists in the worktree — skip silently if so
-  try {
-    await stat(ideaTarget);
-    // Already exists — skip without prompt
-    return;
-  } catch {
-    // Does not exist — continue to prompt
-  }
+  if (valid.length === 0) return;
 
-  // 3. Ask user if they want to symlink
-  const answer = await p.confirm({
-    message: 'Symlink .idea from main repo? (shares IDE settings)',
+  const selected = await p.multiselect({
+    message: 'Symlink from main repo? (shares settings across worktrees)',
+    options: valid.map((entry) => ({ value: entry, label: entry })),
+    initialValues: valid,
   });
 
-  if (p.isCancel(answer) || !answer) {
-    return;
+  if (p.isCancel(selected) || selected.length === 0) return;
+
+  for (const entry of selected) {
+    const source = path.join(gitRoot, entry);
+    const target = path.join(worktreePath, entry);
+    const parentDir = path.dirname(target);
+    await mkdir(parentDir, { recursive: true });
+    const info = await stat(source);
+    await symlink(source, target, info.isDirectory() ? 'dir' : 'file');
   }
 
-  // 4. Create symlink
-  await symlink(ideaSource, ideaTarget, 'dir');
-  p.log.success('Linked .idea directory');
+  p.log.success(`Linked: ${selected.join(', ')}`);
 }

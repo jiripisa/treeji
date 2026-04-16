@@ -40,10 +40,10 @@ vi.mock('../lib/jira.js', () => ({
 }));
 
 // Mock worktree-hooks
-const mockMaybeSymlinkIdea = vi.fn();
+const mockMaybeCreateSymlinks = vi.fn();
 
 vi.mock('../lib/worktree-hooks.js', () => ({
-  maybeSymlinkIdea: (...args: unknown[]) => mockMaybeSymlinkIdea(...args),
+  maybeCreateSymlinks: (...args: unknown[]) => mockMaybeCreateSymlinks(...args),
 }));
 
 // Mock branch-type helper
@@ -67,12 +67,12 @@ describe('create command', () => {
     mockSpinnerStart.mockClear();
     mockSpinnerStop.mockClear();
     mockFetchIssue.mockClear();
-    mockMaybeSymlinkIdea.mockClear();
+    mockMaybeCreateSymlinks.mockClear();
     mockPromptBranchType.mockClear();
 
     stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
 
-    mockMaybeSymlinkIdea.mockResolvedValue(undefined);
+    mockMaybeCreateSymlinks.mockResolvedValue(undefined);
 
     // Default: git root returns a known path
     mockGetGitRoot.mockResolvedValue('/home/user/myrepo');
@@ -424,7 +424,7 @@ describe('create command', () => {
     expect(stderrOutput).toContain('/home/user/my-feature');
   });
 
-  it('SYMLINK HOOK: calls maybeSymlinkIdea after worktree creation (manual path)', async () => {
+  it('SYMLINK HOOK: calls maybeCreateSymlinks after worktree creation (manual path)', async () => {
     mockToSlug.mockReturnValue('my-feature');
     mockValidateSlug.mockReturnValue(undefined);
 
@@ -435,10 +435,10 @@ describe('create command', () => {
 
     await program.parseAsync(['create', 'my-feature', 'feature'], { from: 'user' });
 
-    expect(mockMaybeSymlinkIdea).toHaveBeenCalledWith('/home/user/myrepo', '/home/user/my-feature');
+    expect(mockMaybeCreateSymlinks).toHaveBeenCalledWith('/home/user/myrepo', '/home/user/my-feature');
   });
 
-  it('SYMLINK HOOK (JIRA PATH): calls maybeSymlinkIdea after worktree creation', async () => {
+  it('SYMLINK HOOK (JIRA PATH): calls maybeCreateSymlinks after worktree creation', async () => {
     mockFetchIssue.mockResolvedValue({ key: 'PROJ-123', summary: 'Fix login page', statusName: 'To Do' });
     mockToSlug.mockImplementation((input: string) => {
       if (input === 'Fix login page') return 'fix-login-page';
@@ -452,7 +452,7 @@ describe('create command', () => {
 
     await program.parseAsync(['create', 'PROJ-123', 'feature'], { from: 'user' });
 
-    expect(mockMaybeSymlinkIdea).toHaveBeenCalledWith('/home/user/myrepo', '/home/user/PROJ-123-fix-login-page');
+    expect(mockMaybeCreateSymlinks).toHaveBeenCalledWith('/home/user/myrepo', '/home/user/PROJ-123-fix-login-page');
   });
 
   describe('OPTIONAL TYPE ARG', () => {

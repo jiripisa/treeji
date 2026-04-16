@@ -5,7 +5,7 @@ import { fetchAssignedIssues } from '../lib/jira.js';
 import { getGitRoot, gitWorktreeAdd } from '../lib/git.js';
 import { toSlug } from '../lib/slug.js';
 import { colorStatus } from './list.js';
-import { maybeSymlinkIdea } from '../lib/worktree-hooks.js';
+import { maybeCreateSymlinks } from '../lib/worktree-hooks.js';
 import { promptBranchType } from '../lib/branch-type.js';
 
 export function registerPickCommand(program: Command): void {
@@ -72,7 +72,7 @@ export function registerPickCommand(program: Command): void {
         const { existed } = await gitWorktreeAdd(worktreePath, branch);
         spinner2.stop(`Worktree created at ${worktreePath}`);
         if (existed) process.stderr.write(`Using existing branch: ${branch}\n`);
-        await maybeSymlinkIdea(gitRoot, worktreePath);
+        await maybeCreateSymlinks(gitRoot, worktreePath);
         p.outro(`Branch: ${branch}`);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);

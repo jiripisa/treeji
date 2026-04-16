@@ -97,6 +97,21 @@ When creating a worktree, you choose from a predefined list:
 | `ticket` | Open current JIRA ticket in browser (extracts ticket key from branch name) |
 | `setup-shell` | Print shell wrapper for cd support and zsh completions |
 
+## Per-repo configuration
+
+Create a `.treeji.json` in your repo root to configure symlinks into new worktrees:
+
+```json
+{
+  "symlinks": [
+    ".idea",
+    "http/http-client.private.env.json"
+  ]
+}
+```
+
+After creating a worktree (`pick` or `create`), treeji will offer to symlink these from the main repo. You can deselect individual items in the prompt.
+
 ## Requirements
 
 - Node.js 22+
