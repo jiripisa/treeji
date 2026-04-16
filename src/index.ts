@@ -9,6 +9,7 @@ import { registerRemoveCommand } from './commands/remove.js';
 import { registerSetupCommand } from './commands/setup.js';
 import { registerPickCommand } from './commands/pick.js';
 import { registerStatusCommand } from './commands/status.js';
+import { registerTicketCommand } from './commands/ticket.js';
 
 const program = new Command();
 program
@@ -24,6 +25,7 @@ registerRemoveCommand(program);
 registerSetupCommand(program);
 registerPickCommand(program);
 registerStatusCommand(program);
+registerTicketCommand(program);
 
 program.parseAsync().catch((err: unknown) => {
   const msg = err instanceof Error ? err.message : String(err);
