@@ -481,16 +481,17 @@ describe('remove command', () => {
 
     await program.parseAsync(['remove'], { from: 'user' });
 
-    const logCalls = logSpy.mock.calls.map((args) => String(args[0]));
-    expect(logCalls.some((line) => line.includes('Cannot remove:'))).toBe(true);
-    expect(logCalls.some((line) => line.includes('dirty-feat') && line.includes('uncommitted changes'))).toBe(true);
-
-    const selectCall = mockSelect.mock.calls[0]![0] as { options: { label: string }[] };
-    expect(selectCall.options.map((o) => o.label)).not.toContain('dirty-feat');
-    expect(selectCall.options.map((o) => o.label)).toContain('safe-feat');
+    const selectCall = mockSelect.mock.calls[0]![0] as { options: { label: string; hint?: string; disabled?: boolean }[] };
+    const dirtyOption = selectCall.options.find((o) => o.label === 'dirty-feat');
+    const safeOption = selectCall.options.find((o) => o.label === 'safe-feat');
+    expect(dirtyOption).toBeDefined();
+    expect(dirtyOption!.disabled).toBe(true);
+    expect(dirtyOption!.hint).toContain('uncommitted changes');
+    expect(safeOption).toBeDefined();
+    expect(safeOption!.disabled).toBeFalsy();
   });
 
-  it('BLOCKED NO REMOTE: clean but branch not on remote → printed with "branch not pushed to remote" and not in picker', async () => {
+  it('BLOCKED NO REMOTE: clean but branch not on remote → shown as disabled in picker with reason', async () => {
     const localOnlyWorktree = { path: '/home/user/local-feat', head: 'ccc333', branch: 'feature/local', isMain: false };
     const safeWorktree = { path: '/home/user/safe-feat', head: 'ddd444', branch: 'feature/safe', isMain: false };
 
@@ -519,16 +520,17 @@ describe('remove command', () => {
 
     await program.parseAsync(['remove'], { from: 'user' });
 
-    const logCalls = logSpy.mock.calls.map((args) => String(args[0]));
-    expect(logCalls.some((line) => line.includes('Cannot remove:'))).toBe(true);
-    expect(logCalls.some((line) => line.includes('local-feat') && line.includes('branch not pushed to remote'))).toBe(true);
-
-    const selectCall = mockSelect.mock.calls[0]![0] as { options: { label: string }[] };
-    expect(selectCall.options.map((o) => o.label)).not.toContain('local-feat');
-    expect(selectCall.options.map((o) => o.label)).toContain('safe-feat');
+    const selectCall = mockSelect.mock.calls[0]![0] as { options: { label: string; hint?: string; disabled?: boolean }[] };
+    const localOption = selectCall.options.find((o) => o.label === 'local-feat');
+    const safeOption = selectCall.options.find((o) => o.label === 'safe-feat');
+    expect(localOption).toBeDefined();
+    expect(localOption!.disabled).toBe(true);
+    expect(localOption!.hint).toContain('branch not pushed to remote');
+    expect(safeOption).toBeDefined();
+    expect(safeOption!.disabled).toBeFalsy();
   });
 
-  it('BLOCKED BOTH: dirty AND not on remote → printed with both reasons joined by ", "', async () => {
+  it('BLOCKED BOTH: dirty AND not on remote → shown as disabled with both reasons joined by ", "', async () => {
     const bothBlockedWorktree = { path: '/home/user/both-blocked', head: 'eee555', branch: 'feature/both', isMain: false };
     const safeWorktree = { path: '/home/user/safe-feat', head: 'fff666', branch: 'feature/safe', isMain: false };
 
@@ -558,12 +560,12 @@ describe('remove command', () => {
 
     await program.parseAsync(['remove'], { from: 'user' });
 
-    const logCalls = logSpy.mock.calls.map((args) => String(args[0]));
-    expect(logCalls.some((line) =>
-      line.includes('both-blocked') &&
-      line.includes('uncommitted changes') &&
-      line.includes('branch not pushed to remote')
-    )).toBe(true);
+    const selectCall = mockSelect.mock.calls[0]![0] as { options: { label: string; hint?: string; disabled?: boolean }[] };
+    const blockedOption = selectCall.options.find((o) => o.label === 'both-blocked');
+    expect(blockedOption).toBeDefined();
+    expect(blockedOption!.disabled).toBe(true);
+    expect(blockedOption!.hint).toContain('uncommitted changes');
+    expect(blockedOption!.hint).toContain('branch not pushed to remote');
   });
 
   it('NO BLOCKED: all safe worktrees → no "Cannot remove:" header printed, picker shown as before', async () => {
@@ -664,16 +666,14 @@ describe('remove command', () => {
 
     await program.parseAsync(['remove'], { from: 'user' });
 
-    const logCalls = logSpy.mock.calls.map((args) => String(args[0]));
-
-    // Commit lines printed indented under blocked entry
-    expect(logCalls.some((line) => line.includes('abc123 Fix thing'))).toBe(true);
-    expect(logCalls.some((line) => line.includes('def456 Add stuff'))).toBe(true);
-
-    // local-with-commits NOT in picker
-    const selectCall = mockSelect.mock.calls[0]![0] as { options: { label: string }[] };
-    expect(selectCall.options.map((o) => o.label)).not.toContain('local-with-commits');
-    expect(selectCall.options.map((o) => o.label)).toContain('safe-feat');
+    const selectCall = mockSelect.mock.calls[0]![0] as { options: { label: string; hint?: string; disabled?: boolean }[] };
+    const blockedOption = selectCall.options.find((o) => o.label === 'local-with-commits');
+    const safeOption = selectCall.options.find((o) => o.label === 'safe-feat');
+    expect(blockedOption).toBeDefined();
+    expect(blockedOption!.disabled).toBe(true);
+    expect(blockedOption!.hint).toContain('branch not pushed to remote');
+    expect(safeOption).toBeDefined();
+    expect(safeOption!.disabled).toBeFalsy();
   });
 
   it('ALL BLOCKED NO SAFE: only blocked worktrees → blocked list printed, then "No worktrees can be safely removed"', async () => {
@@ -701,9 +701,6 @@ describe('remove command', () => {
       program.parseAsync(['remove'], { from: 'user' })
     ).rejects.toThrow('exit 0');
 
-    const logCalls = logSpy.mock.calls.map((args) => String(args[0]));
-    expect(logCalls.some((line) => line.includes('Cannot remove:'))).toBe(true);
-    expect(logCalls.some((line) => line.includes('dirty') || line.includes('local'))).toBe(true);
     expect(mockOutro).toHaveBeenCalledWith('No worktrees can be safely removed');
     expect(mockSelect).not.toHaveBeenCalled();
   });

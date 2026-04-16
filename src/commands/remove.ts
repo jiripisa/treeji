@@ -64,17 +64,27 @@ export function registerRemoveCommand(program: Command): void {
           }
         }
 
-        if (blockedWorktrees.length > 0) {
-          console.log('Cannot remove:');
-          for (const { wt, reasons, commits } of blockedWorktrees) {
-            const wtName = path.basename(wt.path);
-            console.log(`  ${chalk.yellow(wtName)}  ${chalk.dim('— ' + reasons.join(', '))}`);
-            for (const commit of commits) {
-              console.log(`      ${chalk.dim(commit)}`);
-            }
-          }
-          console.log('');
+        if (safeWorktrees.length === 0 && blockedWorktrees.length === 0) {
+          p.outro('No worktrees to remove');
+          process.exit(0);
         }
+
+        // Build a single list: safe items selectable, blocked items disabled with reason
+        const blockedMap = new Map(
+          blockedWorktrees.map(({ wt, reasons }) => [wt.path, reasons.join(', ')]),
+        );
+
+        const allOptions = results.map((r) => {
+          const wt = r.kind === 'safe' ? r.wt : r.wt;
+          const wtName = path.basename(wt.path);
+          const blockedReason = blockedMap.get(wt.path);
+          return {
+            value: wt,
+            label: wtName,
+            hint: blockedReason ?? (wt.branch ?? undefined),
+            disabled: !!blockedReason,
+          };
+        });
 
         if (safeWorktrees.length === 0) {
           p.outro('No worktrees can be safely removed');
@@ -83,11 +93,7 @@ export function registerRemoveCommand(program: Command): void {
 
         const selected = await p.select({
           message: 'Select worktree to remove',
-          options: safeWorktrees.map((wt) => ({
-            value: wt,
-            label: path.basename(wt.path),
-            hint: wt.branch ?? undefined,
-          })),
+          options: allOptions,
         });
 
         if (p.isCancel(selected)) {
