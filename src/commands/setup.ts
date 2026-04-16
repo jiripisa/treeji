@@ -16,6 +16,25 @@ treeji() {
     command treeji "$@"
   fi
 }
+
+# treeji — zsh completions
+_treeji() {
+  local -a commands
+  commands=(
+    'configure:Configure JIRA Cloud credentials'
+    'create:Create a worktree from JIRA key or manual slug'
+    'list:List all worktrees with git status'
+    'switch:Switch to a worktree'
+    'remove:Remove a worktree, its directory, and branch'
+    'setup:Print shell function and completions'
+    'pick:Pick an assigned JIRA ticket and create a worktree'
+    'status:Unified dashboard of worktrees, branches, and JIRA tickets'
+    'ticket:Open current JIRA ticket in browser'
+    'help:Display help for a command'
+  )
+  _describe 'command' commands
+}
+compdef _treeji treeji
 `;
 
 export function registerSetupCommand(program: Command): void {
