@@ -99,15 +99,12 @@ When creating a worktree, you choose from a predefined list:
 
 ## Per-repo configuration
 
-Create a `.treeji.json` in your repo root to configure symlinks into new worktrees:
+Create a `.treeji.yml` in your repo root to configure symlinks into new worktrees:
 
-```json
-{
-  "symlinks": [
-    ".idea",
-    "http/http-client.private.env.json"
-  ]
-}
+```yaml
+symlinks:
+  - .idea
+  - http/http-client.private.env.json
 ```
 
 After creating a worktree (`pick` or `create`), treeji will offer to symlink these from the main repo. You can deselect individual items in the prompt.
