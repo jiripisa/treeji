@@ -26,7 +26,7 @@ _treeji() {
     'list:List all worktrees with git status'
     'switch:Switch to a worktree'
     'remove:Remove a worktree, its directory, and branch'
-    'setup:Print shell function and completions'
+    'setup-shell:Print shell function and completions'
     'pick:Pick an assigned JIRA ticket and create a worktree'
     'status:Unified dashboard of worktrees, branches, and JIRA tickets'
     'ticket:Open current JIRA ticket in browser'
@@ -39,8 +39,8 @@ compdef _treeji treeji
 
 export function registerSetupCommand(program: Command): void {
   program
-    .command('setup')
-    .description('Print treeji shell function — add to ~/.zshrc to enable worktree cd')
+    .command('setup-shell')
+    .description('Print treeji shell function — add to ~/.zshrc to enable worktree cd and completions')
     .action(() => {
       process.stderr.write('Add the following to ~/.zshrc (or ~/.bashrc), then run: source ~/.zshrc\n');
       process.stdout.write(SHELL_WRAPPER);

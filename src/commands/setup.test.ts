@@ -22,7 +22,7 @@ describe('setup command', () => {
     program.exitOverride();
     registerSetupCommand(program);
 
-    await program.parseAsync(['setup'], { from: 'user' });
+    await program.parseAsync(['setup-shell'], { from: 'user' });
 
     const output = stdoutSpy.mock.calls.map((c: unknown[]) => c[0] as string).join('');
     expect(output).toContain('treeji()');
@@ -34,7 +34,7 @@ describe('setup command', () => {
     program.exitOverride();
     registerSetupCommand(program);
 
-    await program.parseAsync(['setup'], { from: 'user' });
+    await program.parseAsync(['setup-shell'], { from: 'user' });
 
     const output = stdoutSpy.mock.calls.map((c: unknown[]) => c[0] as string).join('');
     expect(output).toContain('treeji-switch-$$');
@@ -46,7 +46,7 @@ describe('setup command', () => {
     program.exitOverride();
     registerSetupCommand(program);
 
-    await program.parseAsync(['setup'], { from: 'user' });
+    await program.parseAsync(['setup-shell'], { from: 'user' });
 
     const output = stdoutSpy.mock.calls.map((c: unknown[]) => c[0] as string).join('');
     expect(output).toMatch(/cd\s+/);
@@ -58,7 +58,7 @@ describe('setup command', () => {
     program.exitOverride();
     registerSetupCommand(program);
 
-    await program.parseAsync(['setup'], { from: 'user' });
+    await program.parseAsync(['setup-shell'], { from: 'user' });
 
     const output = stdoutSpy.mock.calls.map((c: unknown[]) => c[0] as string).join('');
     expect(output).toContain('command treeji');
@@ -70,7 +70,7 @@ describe('setup command', () => {
     program.exitOverride();
     registerSetupCommand(program);
 
-    await program.parseAsync(['setup'], { from: 'user' });
+    await program.parseAsync(['setup-shell'], { from: 'user' });
 
     // Instructions are on stderr now (stdout stays clean for >>)
     const stderrOutput = stderrSpy.mock.calls.map((c: unknown[]) => c[0] as string).join('');
@@ -83,7 +83,7 @@ describe('setup command', () => {
     program.exitOverride();
     registerSetupCommand(program);
 
-    await program.parseAsync(['setup'], { from: 'user' });
+    await program.parseAsync(['setup-shell'], { from: 'user' });
 
     const stderrOutput = stderrSpy.mock.calls.map((c: unknown[]) => c[0] as string).join('');
     expect(stderrOutput).toMatch(/Add the following|source ~\/.zshrc/);
@@ -95,7 +95,7 @@ describe('setup command', () => {
     program.exitOverride();
     registerSetupCommand(program);
 
-    await program.parseAsync(['setup'], { from: 'user' });
+    await program.parseAsync(['setup-shell'], { from: 'user' });
 
     const stdoutOutput = stdoutSpy.mock.calls.map((c: unknown[]) => c[0] as string).join('');
     expect(stdoutOutput).not.toContain('Add the following');

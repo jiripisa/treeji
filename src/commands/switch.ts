@@ -30,7 +30,7 @@ export function registerSwitchCommand(program: Command): void {
       });
       if (!wrapperInstalled) {
         process.stderr.write(
-          "treeji: shell wrapper not installed — run 'treeji setup' and add the function to ~/.zshrc\n"
+          "treeji: shell wrapper not installed — run 'treeji setup-shell' and add the function to ~/.zshrc\n"
         );
         process.exit(1);
       }
