@@ -2,9 +2,9 @@ import { Command } from 'commander';
 import * as p from '@clack/prompts';
 import path from 'node:path';
 import { fetchAssignedIssues } from '../lib/jira.js';
-import { getGitRoot, gitWorktreeAdd } from '../lib/git.js';
+import { getGitRoot, gitWorktreeAdd, gitWorktreeList, parseWorktreeList } from '../lib/git.js';
 import { toSlug } from '../lib/slug.js';
-import { colorStatus } from './list.js';
+import { colorStatus, extractTicketKey } from './list.js';
 import { maybeCreateSymlinks } from '../lib/worktree-hooks.js';
 import { promptBranchType } from '../lib/branch-type.js';
 
@@ -38,14 +38,27 @@ export function registerPickCommand(program: Command): void {
         return;
       }
 
+      // Detect tickets that already have a worktree
+      const porcelain = await gitWorktreeList();
+      const worktrees = parseWorktreeList(porcelain);
+      const existingTicketKeys = new Set(
+        worktrees
+          .map((wt) => extractTicketKey(wt.branch))
+          .filter((k): k is string => k !== null),
+      );
+
       // Step 3: Present ticket selection (per D-01)
       const selected = await p.select({
         message: 'Select a ticket to work on',
-        options: issues.map((issue) => ({
-          value: issue,
-          label: `${issue.key.padEnd(12)} ${issue.summary}`,
-          hint: colorStatus(issue.statusName),
-        })),
+        options: issues.map((issue) => {
+          const hasWorktree = existingTicketKeys.has(issue.key);
+          return {
+            value: issue,
+            label: `${issue.key.padEnd(12)} ${issue.summary}`,
+            hint: hasWorktree ? 'worktree exists' : colorStatus(issue.statusName),
+            disabled: hasWorktree,
+          };
+        }),
         maxItems: 10,
       });
 

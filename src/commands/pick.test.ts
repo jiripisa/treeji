@@ -4,10 +4,14 @@ import { Command } from 'commander';
 // Mock git library
 const mockGetGitRoot = vi.fn();
 const mockGitWorktreeAdd = vi.fn();
+const mockGitWorktreeList = vi.fn();
+const mockParseWorktreeList = vi.fn();
 
 vi.mock('../lib/git.js', () => ({
   getGitRoot: (...args: unknown[]) => mockGetGitRoot(...args),
   gitWorktreeAdd: (...args: unknown[]) => mockGitWorktreeAdd(...args),
+  gitWorktreeList: (...args: unknown[]) => mockGitWorktreeList(...args),
+  parseWorktreeList: (...args: unknown[]) => mockParseWorktreeList(...args),
 }));
 
 // Mock slug library
@@ -68,7 +72,12 @@ describe('pick command', () => {
   beforeEach(() => {
     mockGetGitRoot.mockClear();
     mockGitWorktreeAdd.mockClear();
+    mockGitWorktreeList.mockClear();
+    mockParseWorktreeList.mockClear();
     mockToSlug.mockClear();
+    // Default: no existing worktrees
+    mockGitWorktreeList.mockResolvedValue('');
+    mockParseWorktreeList.mockReturnValue([]);
     mockFetchAssignedIssues.mockClear();
     mockMaybeCreateSymlinks.mockClear();
     mockPromptBranchType.mockClear();
