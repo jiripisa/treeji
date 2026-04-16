@@ -93,7 +93,7 @@ export function registerRemoveCommand(program: Command): void {
         }
 
         const selected = await p.select({
-          message: 'Select worktree to remove',
+          message: 'Select worktree to remove (Esc to cancel)',
           options: allOptions,
         });
 
