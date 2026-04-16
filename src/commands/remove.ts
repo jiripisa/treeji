@@ -82,12 +82,13 @@ export function registerRemoveCommand(program: Command): void {
             value: wt,
             label: wtName,
             hint: blockedReason ?? (wt.branch ?? undefined),
-            disabled: !!blockedReason,
+            // --force makes blocked items selectable
+            disabled: opts.force ? false : !!blockedReason,
           };
         });
 
-        if (safeWorktrees.length === 0) {
-          p.outro('No worktrees can be safely removed');
+        if (!opts.force && safeWorktrees.length === 0) {
+          p.outro('No worktrees can be safely removed (use --force to override)');
           process.exit(0);
         }
 
@@ -102,6 +103,17 @@ export function registerRemoveCommand(program: Command): void {
         }
 
         const pickedWorktree = selected as WorktreeInfo;
+        const pickedName = path.basename(pickedWorktree.path);
+
+        // Confirm deletion
+        const confirmRemove = await p.confirm({
+          message: `Remove worktree '${pickedName}'?`,
+          initialValue: false,
+        });
+        if (p.isCancel(confirmRemove) || !confirmRemove) {
+          p.cancel('Aborted.');
+          process.exit(1);
+        }
 
         const isMerged = await gitBranchMergedInto(pickedWorktree.branch!, 'main');
         if (!isMerged) {
@@ -118,7 +130,7 @@ export function registerRemoveCommand(program: Command): void {
         const spinner = p.spinner();
         spinner.start(`Removing worktree ${path.basename(pickedWorktree.path)}...`);
         try {
-          await gitWorktreeRemove(pickedWorktree.path, false, gitRoot);
+          await gitWorktreeRemove(pickedWorktree.path, opts.force ?? false, gitRoot);
           if (pickedWorktree.branch) {
             try {
               await gitDeleteBranch(pickedWorktree.branch, true, gitRoot);

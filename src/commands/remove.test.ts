@@ -77,6 +77,7 @@ describe('remove command', () => {
     mockSpinnerStart.mockClear();
     mockSpinnerStop.mockClear();
     mockConfirm.mockClear();
+    mockConfirm.mockResolvedValue(true);
     mockIsCancel.mockClear();
     mockSelect.mockClear();
     mockOutro.mockClear();
@@ -277,7 +278,7 @@ describe('remove command', () => {
       program.parseAsync(['remove'], { from: 'user' })
     ).rejects.toThrow('exit 0');
 
-    expect(mockOutro).toHaveBeenCalledWith('No worktrees can be safely removed');
+    expect(mockOutro).toHaveBeenCalledWith('No worktrees can be safely removed (use --force to override)');
     expect(mockSelect).not.toHaveBeenCalled();
   });
 
@@ -368,7 +369,7 @@ describe('remove command', () => {
     expect(mockCancel).toHaveBeenCalledWith('Aborted.');
   });
 
-  it('INTERACTIVE MERGED: no confirm shown, gitDeleteBranch called with force=true', async () => {
+  it('INTERACTIVE MERGED: confirm removal shown, no unmerged warning, gitDeleteBranch called with force=true', async () => {
     const safeWorktree = { path: '/home/user/feat-a', head: 'def456', branch: 'feature/feat-a', isMain: false };
 
     mockGitWorktreeList.mockResolvedValue('');
@@ -392,7 +393,8 @@ describe('remove command', () => {
 
     await program.parseAsync(['remove'], { from: 'user' });
 
-    expect(mockConfirm).not.toHaveBeenCalled();
+    // Confirm called once (removal confirmation), not twice (no unmerged warning)
+    expect(mockConfirm).toHaveBeenCalledOnce();
     expect(mockGitDeleteBranch).toHaveBeenCalledWith('feature/feat-a', true, '/repo/root');
   });
 
@@ -701,7 +703,7 @@ describe('remove command', () => {
       program.parseAsync(['remove'], { from: 'user' })
     ).rejects.toThrow('exit 0');
 
-    expect(mockOutro).toHaveBeenCalledWith('No worktrees can be safely removed');
+    expect(mockOutro).toHaveBeenCalledWith('No worktrees can be safely removed (use --force to override)');
     expect(mockSelect).not.toHaveBeenCalled();
   });
 });
