@@ -108,19 +108,34 @@ export function registerListCommand(program: Command): void {
       );
 
       // Header row — order: name | status | branch | age | jira
+      // +2 for the "● " / "  " prefix on each name
       console.log(
-        'name'.padEnd(nameWidth + 2) +
+        '  ' + 'name'.padEnd(nameWidth + 2) +
           'status'.padEnd(statusWidth + 2) +
           'branch'.padEnd(branchWidth + 2) +
           'age'.padEnd(ageWidth + 2) +
           'jira',
       );
-      console.log('─'.repeat(nameWidth + 2 + statusWidth + 2 + branchWidth + 2 + ageWidth + 2 + jiraWidth));
+      console.log('─'.repeat(nameWidth + 4 + statusWidth + 2 + branchWidth + 2 + ageWidth + 2 + jiraWidth));
+
+      // Detect current worktree by comparing cwd with worktree paths
+      const cwd = process.cwd();
+      const currentPath = rows.find((r) => {
+        try {
+          return path.resolve(r.wt.path) === path.resolve(cwd) ||
+            cwd.startsWith(path.resolve(r.wt.path) + path.sep);
+        } catch { return false; }
+      })?.wt.path;
 
       // Data rows
       for (const { wt, status, aheadBehind, age } of rows) {
+        const isCurrent = wt.path === currentPath;
         const isDirty = status.trim().length > 0;
-        const name = path.basename(wt.path).padEnd(nameWidth + 2);
+        const rawName = path.basename(wt.path);
+        const nameLabel = isCurrent
+          ? chalk.cyan('●') + ' ' + chalk.bold(rawName)
+          : '  ' + rawName;
+        const name = nameLabel + ' '.repeat(Math.max(0, nameWidth + 4 - (2 + rawName.length)));
         const flag = isDirty ? chalk.red('✗') : chalk.green('✓');
         const remote = `↑${aheadBehind.ahead} ↓${aheadBehind.behind}`;
         const statusVisible = `${isDirty ? '✗' : '✓'} ${remote}`;
