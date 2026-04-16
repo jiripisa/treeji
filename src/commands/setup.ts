@@ -18,6 +18,7 @@ treeji() {
 }
 
 # treeji — zsh completions
+autoload -Uz compinit && compinit -C
 _treeji() {
   local -a commands
   commands=(
