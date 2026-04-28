@@ -102,7 +102,7 @@ When creating a worktree, you choose from a predefined list:
 | `create` | Create worktree from JIRA ticket ID or manual slug. Branch type is interactive or passed as argument. If the branch already exists on `origin`, you're asked whether to fetch and track it |
 | `list` | Colored table: name, ✓/✗ status with ahead/behind, branch, age, clickable JIRA ticket link and status |
 | `switch` | Interactive worktree picker or direct name lookup, cd into selected worktree |
-| `remove` | Interactive safe picker (only deletable worktrees) or direct name. Warns on unmerged branches |
+| `remove [name]` | Interactive safe picker (only deletable worktrees) or direct name. Warns on unmerged branches. `--force` deletes even with uncommitted changes or unpushed commits, `--yes` skips confirmation prompts (for scripts) |
 | `ticket` | Open current JIRA ticket in browser (extracts ticket key from branch name) |
 | `setup-shell` | Print shell wrapper for cd support and zsh completions |
 

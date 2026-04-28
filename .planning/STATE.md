@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-04-02)
 Phase: 05
 Plan: Not started
 Status: Phase complete — ready for verification
-Last activity: 2026-04-28 - Completed quick task 260428-lau: pick + create remote branch detection and adoption
+Last activity: 2026-04-28 - Completed quick task 260428-lr9: treeji pick [filter] argument and full README coverage
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -146,6 +146,7 @@ None yet.
 | 260407-eaz | symlink .idea directory in new worktrees — maybeSymlinkIdea hook | 2026-04-07 | 08a25ab | [260407-eaz-symlink-idea-directory-in-new-worktrees-](./quick/260407-eaz-symlink-idea-directory-in-new-worktrees-/) |
 | 260407-en7 | replace text input for branch type with select menu in pick and create | 2026-04-07 | d42a040 | [260407-en7-replace-text-input-for-branch-type-with-](./quick/260407-en7-replace-text-input-for-branch-type-with-/) |
 | 260428-lau | pick + create: detect remote branch and offer to fetch + track origin | 2026-04-28 | 8198dc9 | [260428-lau-upravit-pick-a-create-pokud-lokalni-bran](./quick/260428-lau-upravit-pick-a-create-pokud-lokalni-bran/) |
+| 260428-lr9 | pick: optional [filter] argument (case-insensitive substring on key/summary, includes closed tickets) + full README coverage | 2026-04-28 | af00243 | [260428-lr9-treeji-pick-pridat-volitelny-filtr-klic-](./quick/260428-lr9-treeji-pick-pridat-volitelny-filtr-klic-/) |
 
 ## Session Continuity
 
