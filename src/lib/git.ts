@@ -28,7 +28,30 @@ export async function gitBranchExists(branch: string): Promise<boolean> {
   }
 }
 
-export async function gitWorktreeAdd(worktreePath: string, branch: string): Promise<{ existed: boolean }> {
+export async function gitRemoteBranchExists(branch: string): Promise<boolean> {
+  try {
+    const { stdout } = await execa('git', ['ls-remote', '--heads', 'origin', branch]);
+    return stdout.trim().length > 0;
+  } catch {
+    return false;
+  }
+}
+
+export async function gitWorktreeAdd(
+  worktreePath: string,
+  branch: string,
+  opts?: { fromRemote?: boolean },
+): Promise<{ existed: boolean }> {
+  if (opts?.fromRemote === true) {
+    // Adopt the remote branch: fetch the latest origin/<branch> ref, then create
+    // a local branch tracking it. Returns { existed: false } because the local
+    // branch did not exist before this call — the "Using existing branch"
+    // message should NOT fire (a freshly-adopted remote branch is "new locally").
+    await execa('git', ['fetch', 'origin', branch]);
+    await execa('git', ['worktree', 'add', '--track', '-b', branch, worktreePath, `origin/${branch}`]);
+    return { existed: false };
+  }
+
   const existed = await gitBranchExists(branch);
   if (existed) {
     await execa('git', ['worktree', 'add', worktreePath, branch]);

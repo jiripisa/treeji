@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { parseWorktreeList, gitAheadBehind, gitBranchExistsOnRemote, gitBranchMergedInto, gitCommitsAheadOf, gitWorktreeRemove, gitWorktreePrune, gitDeleteBranch, gitBranchExists, gitWorktreeAdd, gitListBranches } from './git.js';
+import { parseWorktreeList, gitAheadBehind, gitBranchExistsOnRemote, gitBranchMergedInto, gitCommitsAheadOf, gitWorktreeRemove, gitWorktreePrune, gitDeleteBranch, gitBranchExists, gitWorktreeAdd, gitListBranches, gitRemoteBranchExists } from './git.js';
 
 // Mock execa module for gitAheadBehind tests
 vi.mock('execa', () => {
@@ -293,5 +293,59 @@ describe('gitWorktreeAdd', () => {
     expect(result).toEqual({ existed: false });
     expect(mockExeca).toHaveBeenNthCalledWith(1, 'git', ['rev-parse', '--verify', 'feature/new-branch']);
     expect(mockExeca).toHaveBeenNthCalledWith(2, 'git', ['worktree', 'add', '-b', 'feature/new-branch', '/path/to/worktree']);
+  });
+
+  it('with fromRemote=true: calls git fetch origin <branch> then worktree add --track -b, returns { existed: false }', async () => {
+    // First call: git fetch origin <branch> resolves
+    mockExeca.mockResolvedValueOnce({} as never);
+    // Second call: git worktree add --track -b ... resolves
+    mockExeca.mockResolvedValueOnce({} as never);
+
+    const result = await gitWorktreeAdd('/path/to/worktree', 'feature/PROJ-999', { fromRemote: true });
+
+    expect(result).toEqual({ existed: false });
+    expect(mockExeca).toHaveBeenNthCalledWith(1, 'git', ['fetch', 'origin', 'feature/PROJ-999']);
+    expect(mockExeca).toHaveBeenNthCalledWith(2, 'git', [
+      'worktree', 'add', '--track', '-b', 'feature/PROJ-999', '/path/to/worktree', 'origin/feature/PROJ-999',
+    ]);
+  });
+
+  it('with fromRemote=true: when fetch fails, error propagates (no swallow)', async () => {
+    mockExeca.mockRejectedValueOnce(new Error('fatal: could not fetch origin'));
+
+    await expect(
+      gitWorktreeAdd('/path/to/worktree', 'feature/PROJ-999', { fromRemote: true }),
+    ).rejects.toThrow('fatal: could not fetch origin');
+  });
+});
+
+describe('gitRemoteBranchExists', () => {
+  beforeEach(() => {
+    mockExeca.mockReset();
+  });
+
+  it('returns true when stdout is non-empty (sha + ref line)', async () => {
+    mockExeca.mockResolvedValue({ stdout: 'deadbeef1234567890	refs/heads/feature/PROJ-123\n' } as never);
+    const result = await gitRemoteBranchExists('feature/PROJ-123');
+    expect(result).toBe(true);
+    expect(mockExeca).toHaveBeenCalledWith('git', ['ls-remote', '--heads', 'origin', 'feature/PROJ-123']);
+  });
+
+  it('returns false when stdout is empty (branch not on origin)', async () => {
+    mockExeca.mockResolvedValue({ stdout: '' } as never);
+    const result = await gitRemoteBranchExists('feature/local-only');
+    expect(result).toBe(false);
+  });
+
+  it('returns false when stdout is whitespace-only', async () => {
+    mockExeca.mockResolvedValue({ stdout: '   \n  ' } as never);
+    const result = await gitRemoteBranchExists('feature/local-only');
+    expect(result).toBe(false);
+  });
+
+  it('returns false when execa throws', async () => {
+    mockExeca.mockRejectedValue(new Error('fatal: unable to access origin'));
+    const result = await gitRemoteBranchExists('feature/some-branch');
+    expect(result).toBe(false);
   });
 });
