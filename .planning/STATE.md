@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-04-02)
 Phase: 05
 Plan: Not started
 Status: Phase complete — ready for verification
-Last activity: 2026-04-07
+Last activity: 2026-04-28 - Completed quick task 260428-lau: pick + create remote branch detection and adoption
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -145,6 +145,7 @@ None yet.
 | 260406-g61 | worktree add existing branch — gitBranchExists + gitWorktreeAdd fix | 2026-04-06 | f4faeea | [260406-g61-worktree-add-existing-branch](./quick/260406-g61-worktree-add-existing-branch/) |
 | 260407-eaz | symlink .idea directory in new worktrees — maybeSymlinkIdea hook | 2026-04-07 | 08a25ab | [260407-eaz-symlink-idea-directory-in-new-worktrees-](./quick/260407-eaz-symlink-idea-directory-in-new-worktrees-/) |
 | 260407-en7 | replace text input for branch type with select menu in pick and create | 2026-04-07 | d42a040 | [260407-en7-replace-text-input-for-branch-type-with-](./quick/260407-en7-replace-text-input-for-branch-type-with-/) |
+| 260428-lau | pick + create: detect remote branch and offer to fetch + track origin | 2026-04-28 | 8198dc9 | [260428-lau-upravit-pick-a-create-pokud-lokalni-bran](./quick/260428-lau-upravit-pick-a-create-pokud-lokalni-bran/) |
 
 ## Session Continuity
 
