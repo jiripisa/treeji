@@ -23,9 +23,11 @@ vi.mock('../lib/slug.js', () => ({
 
 // Mock JIRA library
 const mockFetchAssignedIssues = vi.fn();
+const mockSearchIssues = vi.fn();
 
 vi.mock('../lib/jira.js', () => ({
   fetchAssignedIssues: (...args: unknown[]) => mockFetchAssignedIssues(...args),
+  searchIssues: (...args: unknown[]) => mockSearchIssues(...args),
 }));
 
 // Mock worktree-hooks
@@ -86,6 +88,7 @@ describe('pick command', () => {
     mockGitWorktreeList.mockResolvedValue('');
     mockParseWorktreeList.mockReturnValue([]);
     mockFetchAssignedIssues.mockClear();
+    mockSearchIssues.mockClear();
     mockMaybeCreateSymlinks.mockClear();
     mockPromptBranchType.mockClear();
     mockMaybeAdoptRemoteBranch.mockClear();
@@ -103,6 +106,7 @@ describe('pick command', () => {
     mockGetGitRoot.mockResolvedValue('/home/user/myrepo');
     mockGitWorktreeAdd.mockResolvedValue({ existed: false });
     mockFetchAssignedIssues.mockResolvedValue(sampleIssues);
+    mockSearchIssues.mockResolvedValue(sampleIssues);
     mockSelect.mockResolvedValue(sampleIssues[0]);
     mockPromptBranchType.mockResolvedValue('feature');
     mockToSlug.mockImplementation((input: string) => {
@@ -399,7 +403,7 @@ describe('pick command', () => {
   });
 
   describe('FILTER ARGUMENT', () => {
-    it('NO FILTER (backwards-compat): fetchAssignedIssues called with (50, false), all issues passed to p.select', async () => {
+    it('NO FILTER (backwards-compat): fetchAssignedIssues called with (50, false), searchIssues NOT called, all issues passed to p.select', async () => {
       const { registerPickCommand } = await import('./pick.js');
       const program = new Command();
       program.exitOverride();
@@ -408,12 +412,13 @@ describe('pick command', () => {
       await program.parseAsync(['pick'], { from: 'user' });
 
       expect(mockFetchAssignedIssues).toHaveBeenCalledWith(50, false);
+      expect(mockSearchIssues).not.toHaveBeenCalled();
       const optsArg = mockSelect.mock.calls[0][0] as { options: Array<{ value: { key: string } }> };
       expect(optsArg.options.map((o) => o.value.key)).toEqual(['PROJ-123', 'PROJ-456']);
     });
 
     it('FILTER MATCHES KEY: only matching issue passed to p.select', async () => {
-      mockFetchAssignedIssues.mockResolvedValue([
+      mockSearchIssues.mockResolvedValue([
         { key: 'PROJ-123', summary: 'Foo', statusName: 'To Do' },
         { key: 'OTHER-9', summary: 'Bar', statusName: 'To Do' },
       ]);
@@ -431,7 +436,7 @@ describe('pick command', () => {
     });
 
     it('FILTER MATCHES SUMMARY: only matching issue passed to p.select', async () => {
-      mockFetchAssignedIssues.mockResolvedValue([
+      mockSearchIssues.mockResolvedValue([
         { key: 'PROJ-1', summary: 'Login bug', statusName: 'To Do' },
         { key: 'PROJ-2', summary: 'Dashboard work', statusName: 'To Do' },
       ]);
@@ -448,7 +453,7 @@ describe('pick command', () => {
     });
 
     it('CASE-INSENSITIVE summary match: lowercase filter matches uppercase summary', async () => {
-      mockFetchAssignedIssues.mockResolvedValue([
+      mockSearchIssues.mockResolvedValue([
         { key: 'PROJ-1', summary: 'LOGIN bug', statusName: 'To Do' },
       ]);
 
@@ -464,7 +469,7 @@ describe('pick command', () => {
     });
 
     it('CASE-INSENSITIVE key match: lowercase filter matches uppercase key', async () => {
-      mockFetchAssignedIssues.mockResolvedValue([
+      mockSearchIssues.mockResolvedValue([
         { key: 'PROJ-1', summary: 'whatever', statusName: 'To Do' },
       ]);
 
@@ -480,7 +485,7 @@ describe('pick command', () => {
     });
 
     it('SUBSTRING (not just prefix): mid-string match in key works', async () => {
-      mockFetchAssignedIssues.mockResolvedValue([
+      mockSearchIssues.mockResolvedValue([
         { key: 'PROJ-123', summary: 'Foo', statusName: 'To Do' },
       ]);
 
@@ -495,7 +500,7 @@ describe('pick command', () => {
       expect(optsArg.options.map((o) => o.value.key)).toEqual(['PROJ-123']);
     });
 
-    it('INCLUDE ALL WHEN FILTER PROVIDED: fetchAssignedIssues called with (50, true)', async () => {
+    it('SEARCH ALL TICKETS WHEN FILTER PROVIDED: searchIssues is used (no assignee = currentUser() restriction); fetchAssignedIssues NOT called', async () => {
       const { registerPickCommand } = await import('./pick.js');
       const program = new Command();
       program.exitOverride();
@@ -503,22 +508,12 @@ describe('pick command', () => {
 
       await program.parseAsync(['pick', 'ABC'], { from: 'user' });
 
-      expect(mockFetchAssignedIssues).toHaveBeenCalledWith(50, true);
-    });
-
-    it('INCLUDE ALL FALSE WHEN NO FILTER: fetchAssignedIssues called with (50, false)', async () => {
-      const { registerPickCommand } = await import('./pick.js');
-      const program = new Command();
-      program.exitOverride();
-      registerPickCommand(program);
-
-      await program.parseAsync(['pick'], { from: 'user' });
-
-      expect(mockFetchAssignedIssues).toHaveBeenCalledWith(50, false);
+      expect(mockSearchIssues).toHaveBeenCalledWith('ABC', 50);
+      expect(mockFetchAssignedIssues).not.toHaveBeenCalled();
     });
 
     it('NO MATCH EMPTY STATE: p.outro called with filter-aware message; p.select NOT called', async () => {
-      mockFetchAssignedIssues.mockResolvedValue([
+      mockSearchIssues.mockResolvedValue([
         { key: 'PROJ-1', summary: 'Foo', statusName: 'To Do' },
       ]);
 

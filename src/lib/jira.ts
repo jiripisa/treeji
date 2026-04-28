@@ -100,3 +100,34 @@ export async function fetchAssignedIssues(maxResults = 50, includeAll = false): 
     statusName: (issue.fields?.status as { name?: string } | undefined)?.name ?? '',
   }));
 }
+
+// JIRA's `text ~` indexes summary/description/comments but not issue keys, and JIRA Cloud
+// disallows leading wildcards. We compose a few OR-clauses so a project key (`PROJ`) or a
+// full issue key (`PROJ-123`) still produces hits — substring match on the key itself is
+// finished off client-side after the fetch.
+export async function searchIssues(
+  filter: string,
+  maxResults = 50,
+): Promise<Array<{ key: string; summary: string; statusName: string }>> {
+  const client = createJiraClient();
+  const escaped = filter.replace(/[\\"]/g, '\\$&');
+  const clauses: string[] = [`text ~ "${escaped}*"`];
+  if (/^[A-Za-z][A-Za-z0-9_]+-\d+$/.test(filter)) {
+    clauses.push(`issuekey = "${filter.toUpperCase()}"`);
+  } else if (/^[A-Za-z][A-Za-z0-9_]+$/.test(filter)) {
+    clauses.push(`project = "${filter.toUpperCase()}"`);
+  }
+  const jql = `(${clauses.join(' OR ')}) ORDER BY updated DESC`;
+  const result = await withRetry(() =>
+    client.issueSearch.searchForIssuesUsingJqlEnhancedSearchPost({
+      jql,
+      fields: ['summary', 'status'],
+      maxResults,
+    }),
+  );
+  return (result.issues ?? []).map((issue) => ({
+    key: issue.key ?? '',
+    summary: (issue.fields?.summary as string | undefined) ?? '',
+    statusName: (issue.fields?.status as { name?: string } | undefined)?.name ?? '',
+  }));
+}

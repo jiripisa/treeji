@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import * as p from '@clack/prompts';
 import path from 'node:path';
-import { fetchAssignedIssues } from '../lib/jira.js';
+import { fetchAssignedIssues, searchIssues } from '../lib/jira.js';
 import { getGitRoot, gitWorktreeAdd, gitWorktreeList, parseWorktreeList } from '../lib/git.js';
 import { toSlug } from '../lib/slug.js';
 import { colorStatus, extractTicketKey } from './list.js';
@@ -23,16 +23,19 @@ function matchesFilter(
 export function registerPickCommand(program: Command): void {
   program
     .command('pick [filter]')
-    .description('Interactively pick an assigned JIRA ticket and create a worktree. Optional [filter] narrows tickets by case-insensitive substring match on key or summary; when a filter is given, closed tickets are also searchable.')
+    .description('Interactively pick a JIRA ticket and create a worktree. Without filter: only your assigned open tickets. With [filter]: searches across all visible JIRA tickets (any assignee, any status) by case-insensitive substring on key or summary.')
     .action(async (filter?: string) => {
-      // Step 1: Load assigned tickets with spinner (per D-03)
-      const spinner = p.spinner();
-      spinner.start('Loading assigned tickets...');
+      const hasFilter = filter !== undefined && filter.length > 0;
 
-      const includeAll = filter !== undefined && filter.length > 0;
+      // Step 1: Load tickets with spinner — assigned-to-me when no filter, full search when filter is present
+      const spinner = p.spinner();
+      spinner.start(hasFilter ? `Searching tickets matching "${filter}"...` : 'Loading assigned tickets...');
+
       let issues: Array<{ key: string; summary: string; statusName: string }>;
       try {
-        issues = await fetchAssignedIssues(50, includeAll);
+        issues = hasFilter
+          ? await searchIssues(filter!, 50)
+          : await fetchAssignedIssues(50, false);
         spinner.stop(`Found ${issues.length} ticket(s)`);
         if (issues.length === 50) {
           process.stderr.write('Showing first 50 tickets (most recently updated)\n');
@@ -45,14 +48,16 @@ export function registerPickCommand(program: Command): void {
         return;
       }
 
-      // Step 2a: Apply optional filter (case-insensitive substring on key + summary)
-      const filtered = filter && filter.length > 0
-        ? issues.filter((i) => matchesFilter(i, filter))
+      // Step 2a: When a filter is supplied, JIRA's `text ~` already narrowed the result set
+      // server-side, but it can't substring-match issue keys (e.g. "123" inside "PROJ-123").
+      // Run a final client-side substring filter on key + summary to cover that gap.
+      const filtered = hasFilter
+        ? issues.filter((i) => matchesFilter(i, filter!))
         : issues;
 
       // Step 2b: Handle empty state — message branches on whether a filter was supplied
       if (filtered.length === 0) {
-        if (filter && filter.length > 0) {
+        if (hasFilter) {
           p.outro(`No tickets matching "${filter}".`);
         } else {
           p.outro('No assigned open tickets found.');
