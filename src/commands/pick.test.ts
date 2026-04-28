@@ -397,4 +397,141 @@ describe('pick command', () => {
       );
     });
   });
+
+  describe('FILTER ARGUMENT', () => {
+    it('NO FILTER (backwards-compat): fetchAssignedIssues called with (50, false), all issues passed to p.select', async () => {
+      const { registerPickCommand } = await import('./pick.js');
+      const program = new Command();
+      program.exitOverride();
+      registerPickCommand(program);
+
+      await program.parseAsync(['pick'], { from: 'user' });
+
+      expect(mockFetchAssignedIssues).toHaveBeenCalledWith(50, false);
+      const optsArg = mockSelect.mock.calls[0][0] as { options: Array<{ value: { key: string } }> };
+      expect(optsArg.options.map((o) => o.value.key)).toEqual(['PROJ-123', 'PROJ-456']);
+    });
+
+    it('FILTER MATCHES KEY: only matching issue passed to p.select', async () => {
+      mockFetchAssignedIssues.mockResolvedValue([
+        { key: 'PROJ-123', summary: 'Foo', statusName: 'To Do' },
+        { key: 'OTHER-9', summary: 'Bar', statusName: 'To Do' },
+      ]);
+      // Default mockSelect resolves to sampleIssues[0]; not relevant for assertion here.
+
+      const { registerPickCommand } = await import('./pick.js');
+      const program = new Command();
+      program.exitOverride();
+      registerPickCommand(program);
+
+      await program.parseAsync(['pick', 'PROJ'], { from: 'user' });
+
+      const optsArg = mockSelect.mock.calls[0][0] as { options: Array<{ value: { key: string } }> };
+      expect(optsArg.options.map((o) => o.value.key)).toEqual(['PROJ-123']);
+    });
+
+    it('FILTER MATCHES SUMMARY: only matching issue passed to p.select', async () => {
+      mockFetchAssignedIssues.mockResolvedValue([
+        { key: 'PROJ-1', summary: 'Login bug', statusName: 'To Do' },
+        { key: 'PROJ-2', summary: 'Dashboard work', statusName: 'To Do' },
+      ]);
+
+      const { registerPickCommand } = await import('./pick.js');
+      const program = new Command();
+      program.exitOverride();
+      registerPickCommand(program);
+
+      await program.parseAsync(['pick', 'login'], { from: 'user' });
+
+      const optsArg = mockSelect.mock.calls[0][0] as { options: Array<{ value: { key: string } }> };
+      expect(optsArg.options.map((o) => o.value.key)).toEqual(['PROJ-1']);
+    });
+
+    it('CASE-INSENSITIVE summary match: lowercase filter matches uppercase summary', async () => {
+      mockFetchAssignedIssues.mockResolvedValue([
+        { key: 'PROJ-1', summary: 'LOGIN bug', statusName: 'To Do' },
+      ]);
+
+      const { registerPickCommand } = await import('./pick.js');
+      const program = new Command();
+      program.exitOverride();
+      registerPickCommand(program);
+
+      await program.parseAsync(['pick', 'login'], { from: 'user' });
+
+      const optsArg = mockSelect.mock.calls[0][0] as { options: Array<{ value: { key: string } }> };
+      expect(optsArg.options.map((o) => o.value.key)).toEqual(['PROJ-1']);
+    });
+
+    it('CASE-INSENSITIVE key match: lowercase filter matches uppercase key', async () => {
+      mockFetchAssignedIssues.mockResolvedValue([
+        { key: 'PROJ-1', summary: 'whatever', statusName: 'To Do' },
+      ]);
+
+      const { registerPickCommand } = await import('./pick.js');
+      const program = new Command();
+      program.exitOverride();
+      registerPickCommand(program);
+
+      await program.parseAsync(['pick', 'proj'], { from: 'user' });
+
+      const optsArg = mockSelect.mock.calls[0][0] as { options: Array<{ value: { key: string } }> };
+      expect(optsArg.options.map((o) => o.value.key)).toEqual(['PROJ-1']);
+    });
+
+    it('SUBSTRING (not just prefix): mid-string match in key works', async () => {
+      mockFetchAssignedIssues.mockResolvedValue([
+        { key: 'PROJ-123', summary: 'Foo', statusName: 'To Do' },
+      ]);
+
+      const { registerPickCommand } = await import('./pick.js');
+      const program = new Command();
+      program.exitOverride();
+      registerPickCommand(program);
+
+      await program.parseAsync(['pick', 'OJ-1'], { from: 'user' });
+
+      const optsArg = mockSelect.mock.calls[0][0] as { options: Array<{ value: { key: string } }> };
+      expect(optsArg.options.map((o) => o.value.key)).toEqual(['PROJ-123']);
+    });
+
+    it('INCLUDE ALL WHEN FILTER PROVIDED: fetchAssignedIssues called with (50, true)', async () => {
+      const { registerPickCommand } = await import('./pick.js');
+      const program = new Command();
+      program.exitOverride();
+      registerPickCommand(program);
+
+      await program.parseAsync(['pick', 'ABC'], { from: 'user' });
+
+      expect(mockFetchAssignedIssues).toHaveBeenCalledWith(50, true);
+    });
+
+    it('INCLUDE ALL FALSE WHEN NO FILTER: fetchAssignedIssues called with (50, false)', async () => {
+      const { registerPickCommand } = await import('./pick.js');
+      const program = new Command();
+      program.exitOverride();
+      registerPickCommand(program);
+
+      await program.parseAsync(['pick'], { from: 'user' });
+
+      expect(mockFetchAssignedIssues).toHaveBeenCalledWith(50, false);
+    });
+
+    it('NO MATCH EMPTY STATE: p.outro called with filter-aware message; p.select NOT called', async () => {
+      mockFetchAssignedIssues.mockResolvedValue([
+        { key: 'PROJ-1', summary: 'Foo', statusName: 'To Do' },
+      ]);
+
+      const { registerPickCommand } = await import('./pick.js');
+      const program = new Command();
+      program.exitOverride();
+      registerPickCommand(program);
+
+      await program.parseAsync(['pick', 'XYZ'], { from: 'user' });
+
+      expect(mockOutro).toHaveBeenCalledWith('No tickets matching "XYZ".');
+      expect(mockSelect).not.toHaveBeenCalled();
+      expect(mockGitWorktreeAdd).not.toHaveBeenCalled();
+    });
+  });
 });
