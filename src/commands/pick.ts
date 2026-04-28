@@ -9,18 +9,30 @@ import { maybeCreateSymlinks } from '../lib/worktree-hooks.js';
 import { promptBranchType } from '../lib/branch-type.js';
 import { maybeAdoptRemoteBranch } from '../lib/branch-remote.js';
 
+function matchesFilter(
+  issue: { key: string; summary: string },
+  filter: string,
+): boolean {
+  const needle = filter.toLowerCase();
+  return (
+    issue.key.toLowerCase().includes(needle) ||
+    issue.summary.toLowerCase().includes(needle)
+  );
+}
+
 export function registerPickCommand(program: Command): void {
   program
-    .command('pick')
-    .description('Interactively pick an assigned JIRA ticket and create a worktree')
-    .action(async () => {
+    .command('pick [filter]')
+    .description('Interactively pick an assigned JIRA ticket and create a worktree. Optional [filter] narrows tickets by case-insensitive substring match on key or summary; when a filter is given, closed tickets are also searchable.')
+    .action(async (filter?: string) => {
       // Step 1: Load assigned tickets with spinner (per D-03)
       const spinner = p.spinner();
       spinner.start('Loading assigned tickets...');
 
+      const includeAll = filter !== undefined && filter.length > 0;
       let issues: Array<{ key: string; summary: string; statusName: string }>;
       try {
-        issues = await fetchAssignedIssues();
+        issues = await fetchAssignedIssues(50, includeAll);
         spinner.stop(`Found ${issues.length} ticket(s)`);
         if (issues.length === 50) {
           process.stderr.write('Showing first 50 tickets (most recently updated)\n');
@@ -33,9 +45,18 @@ export function registerPickCommand(program: Command): void {
         return;
       }
 
-      // Step 2: Handle empty state (per Pitfall 3 — empty is not an error)
-      if (issues.length === 0) {
-        p.outro('No assigned open tickets found.');
+      // Step 2a: Apply optional filter (case-insensitive substring on key + summary)
+      const filtered = filter && filter.length > 0
+        ? issues.filter((i) => matchesFilter(i, filter))
+        : issues;
+
+      // Step 2b: Handle empty state — message branches on whether a filter was supplied
+      if (filtered.length === 0) {
+        if (filter && filter.length > 0) {
+          p.outro(`No tickets matching "${filter}".`);
+        } else {
+          p.outro('No assigned open tickets found.');
+        }
         return;
       }
 
@@ -51,7 +72,7 @@ export function registerPickCommand(program: Command): void {
       // Step 3: Present ticket selection (per D-01)
       const selected = await p.select({
         message: 'Select a ticket to work on',
-        options: issues.map((issue) => {
+        options: filtered.map((issue) => {
           const hasWorktree = existingTicketKeys.has(issue.key);
           return {
             value: issue,
