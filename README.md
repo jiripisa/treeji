@@ -33,6 +33,10 @@ treeji status
 # Pick a ticket interactively from your assigned JIRA issues
 treeji pick
 
+# Narrow the picker by case-insensitive substring on key or summary
+# (also includes closed tickets so you can revisit an old one)
+treeji pick login
+
 # Create worktree from a JIRA ticket
 treeji create PROJ-123
 
@@ -63,9 +67,14 @@ treeji ticket
 Both create the same result — a branch `{type}/{slug}` and worktree `../{slug}/`. The difference is how you get to the ticket:
 
 - **`treeji pick`** — don't know the ticket ID? Browse your assigned JIRA tickets and select one
+- **`treeji pick <filter>`** — narrow the list by case-insensitive substring on ticket key or summary. With a filter, closed/Done tickets are also searchable, so you can resurrect an old one by name
 - **`treeji create PROJ-123`** — know the ticket ID? Pass it directly (branch type selection is interactive)
 - **`treeji create PROJ-123 feature`** — know the ticket ID and type? Pass both
 - **`treeji create my-task bugfix`** — no JIRA? Use a manual slug
+
+### Existing remote branches
+
+If the branch the worktree would create already exists on `origin` (e.g. a teammate pushed it), `pick` and `create` detect it and ask whether to fetch and track `origin/<branch>` instead of branching from `HEAD`. Decline to keep the current behaviour (new branch from `HEAD`).
 
 ### Branch types
 
@@ -89,8 +98,8 @@ When creating a worktree, you choose from a predefined list:
 |---------|-------------|
 | `configure` | Set up JIRA Cloud connection — opens browser to token page, validates credentials, stores token in OS keychain |
 | `status` | Unified dashboard: worktrees + branches + JIRA tickets grouped by connection state (`--full` for detail, `--all` for closed tickets) |
-| `pick` | Browse assigned open JIRA tickets, select one, choose branch type → worktree created |
-| `create` | Create worktree from JIRA ticket ID or manual slug. Branch type is interactive or passed as argument |
+| `pick [filter]` | Browse assigned open JIRA tickets, select one, choose branch type → worktree created. Optional `[filter]` narrows by case-insensitive substring on key or summary and includes closed tickets |
+| `create` | Create worktree from JIRA ticket ID or manual slug. Branch type is interactive or passed as argument. If the branch already exists on `origin`, you're asked whether to fetch and track it |
 | `list` | Colored table: name, ✓/✗ status with ahead/behind, branch, age, clickable JIRA ticket link and status |
 | `switch` | Interactive worktree picker or direct name lookup, cd into selected worktree |
 | `remove` | Interactive safe picker (only deletable worktrees) or direct name. Warns on unmerged branches |
