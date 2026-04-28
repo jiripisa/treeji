@@ -42,6 +42,13 @@ vi.mock('../lib/branch-type.js', () => ({
   promptBranchType: (...args: unknown[]) => mockPromptBranchType(...args),
 }));
 
+// Mock branch-remote helper
+const mockMaybeAdoptRemoteBranch = vi.fn();
+
+vi.mock('../lib/branch-remote.js', () => ({
+  maybeAdoptRemoteBranch: (...args: unknown[]) => mockMaybeAdoptRemoteBranch(...args),
+}));
+
 // Mock @clack/prompts
 const mockCancel = vi.fn();
 const mockOutro = vi.fn();
@@ -81,6 +88,9 @@ describe('pick command', () => {
     mockFetchAssignedIssues.mockClear();
     mockMaybeCreateSymlinks.mockClear();
     mockPromptBranchType.mockClear();
+    mockMaybeAdoptRemoteBranch.mockClear();
+    // Default: helper says "do not adopt remote" — preserves existing test semantics.
+    mockMaybeAdoptRemoteBranch.mockResolvedValue({ adopt: false });
     mockCancel.mockClear();
     mockOutro.mockClear();
     mockSpinnerStart.mockClear();
@@ -129,6 +139,7 @@ describe('pick command', () => {
     expect(mockGitWorktreeAdd).toHaveBeenCalledWith(
       '/home/user/PROJ-123-fix-login-page',
       'feature/PROJ-123-fix-login-page',
+      { fromRemote: false },
     );
     expect(mockOutro).toHaveBeenCalledWith('Branch: feature/PROJ-123-fix-login-page');
   });
@@ -146,6 +157,7 @@ describe('pick command', () => {
     expect(mockGitWorktreeAdd).toHaveBeenCalledWith(
       '/home/user/PROJ-123-fix-login-page',
       'PROJ-123-fix-login-page',
+      { fromRemote: false },
     );
     expect(mockOutro).toHaveBeenCalledWith('Branch: PROJ-123-fix-login-page');
   });
@@ -272,6 +284,7 @@ describe('pick command', () => {
     expect(mockGitWorktreeAdd).toHaveBeenCalledWith(
       '/home/user/PROJ-999',
       'bugfix/PROJ-999',
+      { fromRemote: false },
     );
   });
 
@@ -346,5 +359,42 @@ describe('pick command', () => {
     await program.parseAsync(['pick'], { from: 'user' });
 
     expect(mockMaybeCreateSymlinks).toHaveBeenCalledWith('/home/user/myrepo', '/home/user/PROJ-123-fix-login-page');
+  });
+
+  describe('REMOTE BRANCH ADOPTION', () => {
+    it('ADOPT REMOTE: when maybeAdoptRemoteBranch returns { adopt: true }, gitWorktreeAdd called with { fromRemote: true }', async () => {
+      mockMaybeAdoptRemoteBranch.mockResolvedValue({ adopt: true });
+
+      const { registerPickCommand } = await import('./pick.js');
+      const program = new Command();
+      program.exitOverride();
+      registerPickCommand(program);
+
+      await program.parseAsync(['pick'], { from: 'user' });
+
+      expect(mockMaybeAdoptRemoteBranch).toHaveBeenCalledWith('feature/PROJ-123-fix-login-page');
+      expect(mockGitWorktreeAdd).toHaveBeenCalledWith(
+        '/home/user/PROJ-123-fix-login-page',
+        'feature/PROJ-123-fix-login-page',
+        { fromRemote: true },
+      );
+    });
+
+    it('DECLINE REMOTE: when maybeAdoptRemoteBranch returns { adopt: false }, gitWorktreeAdd called with { fromRemote: false }', async () => {
+      mockMaybeAdoptRemoteBranch.mockResolvedValue({ adopt: false });
+
+      const { registerPickCommand } = await import('./pick.js');
+      const program = new Command();
+      program.exitOverride();
+      registerPickCommand(program);
+
+      await program.parseAsync(['pick'], { from: 'user' });
+
+      expect(mockGitWorktreeAdd).toHaveBeenCalledWith(
+        '/home/user/PROJ-123-fix-login-page',
+        'feature/PROJ-123-fix-login-page',
+        { fromRemote: false },
+      );
+    });
   });
 });

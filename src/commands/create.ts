@@ -6,6 +6,7 @@ import { toSlug, validateSlug } from '../lib/slug.js';
 import { fetchIssue } from '../lib/jira.js';
 import { maybeCreateSymlinks } from '../lib/worktree-hooks.js';
 import { promptBranchType } from '../lib/branch-type.js';
+import { maybeAdoptRemoteBranch } from '../lib/branch-remote.js';
 
 export function registerCreateCommand(program: Command): void {
   program
@@ -31,9 +32,11 @@ export function registerCreateCommand(program: Command): void {
           const branch = type ? `${type}/${ticketSlug}` : ticketSlug;
 
           process.stderr.write(`Creating: ${branch}  →  ${worktreePath}\n`);
+          // Ask before any spinner starts — p.confirm corrupts active spinner output.
+          const { adopt } = await maybeAdoptRemoteBranch(branch);
           const spinner2 = p.spinner();
           spinner2.start(`Creating worktree ${ticketSlug}...`);
-          const { existed } = await gitWorktreeAdd(worktreePath, branch);
+          const { existed } = await gitWorktreeAdd(worktreePath, branch, { fromRemote: adopt });
           spinner2.stop(`Worktree created at ${worktreePath}`);
           if (existed) process.stderr.write(`Using existing branch: ${branch}\n`);
           await maybeCreateSymlinks(gitRoot, worktreePath);
@@ -64,9 +67,11 @@ export function registerCreateCommand(program: Command): void {
         const branch = type ? `${type}/${cleanSlug}` : cleanSlug;
 
         process.stderr.write(`Creating: ${branch}  →  ${worktreePath}\n`);
+        // Ask before any spinner starts — p.confirm corrupts active spinner output.
+        const { adopt } = await maybeAdoptRemoteBranch(branch);
         const spinner = p.spinner();
         spinner.start(`Creating worktree ${cleanSlug}...`);
-        const { existed: branchExisted } = await gitWorktreeAdd(worktreePath, branch);
+        const { existed: branchExisted } = await gitWorktreeAdd(worktreePath, branch, { fromRemote: adopt });
         spinner.stop(`Worktree created at ${worktreePath}`);
         if (branchExisted) process.stderr.write(`Using existing branch: ${branch}\n`);
         await maybeCreateSymlinks(gitRoot, worktreePath);

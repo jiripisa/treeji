@@ -7,6 +7,7 @@ import { toSlug } from '../lib/slug.js';
 import { colorStatus, extractTicketKey } from './list.js';
 import { maybeCreateSymlinks } from '../lib/worktree-hooks.js';
 import { promptBranchType } from '../lib/branch-type.js';
+import { maybeAdoptRemoteBranch } from '../lib/branch-remote.js';
 
 export function registerPickCommand(program: Command): void {
   program
@@ -80,9 +81,11 @@ export function registerPickCommand(program: Command): void {
         const worktreePath = path.resolve(gitRoot, '..', ticketSlug);
         const branch = type ? `${type}/${ticketSlug}` : ticketSlug;
 
+        // Ask before any spinner starts — p.confirm corrupts active spinner output.
+        const { adopt } = await maybeAdoptRemoteBranch(branch);
         const spinner2 = p.spinner();
         spinner2.start(`Creating worktree ${ticketSlug}...`);
-        const { existed } = await gitWorktreeAdd(worktreePath, branch);
+        const { existed } = await gitWorktreeAdd(worktreePath, branch, { fromRemote: adopt });
         spinner2.stop(`Worktree created at ${worktreePath}`);
         if (existed) process.stderr.write(`Using existing branch: ${branch}\n`);
         await maybeCreateSymlinks(gitRoot, worktreePath);

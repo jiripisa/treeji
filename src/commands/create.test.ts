@@ -53,6 +53,13 @@ vi.mock('../lib/branch-type.js', () => ({
   promptBranchType: (...args: unknown[]) => mockPromptBranchType(...args),
 }));
 
+// Mock branch-remote helper
+const mockMaybeAdoptRemoteBranch = vi.fn();
+
+vi.mock('../lib/branch-remote.js', () => ({
+  maybeAdoptRemoteBranch: (...args: unknown[]) => mockMaybeAdoptRemoteBranch(...args),
+}));
+
 describe('create command', () => {
   let stderrSpy: ReturnType<typeof vi.spyOn>;
 
@@ -69,10 +76,13 @@ describe('create command', () => {
     mockFetchIssue.mockClear();
     mockMaybeCreateSymlinks.mockClear();
     mockPromptBranchType.mockClear();
+    mockMaybeAdoptRemoteBranch.mockClear();
 
     stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
 
     mockMaybeCreateSymlinks.mockResolvedValue(undefined);
+    // Default: helper says "do not adopt remote" — preserves existing test semantics.
+    mockMaybeAdoptRemoteBranch.mockResolvedValue({ adopt: false });
 
     // Default: git root returns a known path
     mockGetGitRoot.mockResolvedValue('/home/user/myrepo');
@@ -102,6 +112,7 @@ describe('create command', () => {
     expect(mockGitWorktreeAdd).toHaveBeenCalledWith(
       '/home/user/my-feature',
       'feature/my-feature',
+      { fromRemote: false },
     );
   });
 
@@ -120,6 +131,7 @@ describe('create command', () => {
     expect(mockGitWorktreeAdd).toHaveBeenCalledWith(
       '/home/user/prihlaseni',
       'bugfix/prihlaseni',
+      { fromRemote: false },
     );
   });
 
@@ -199,6 +211,7 @@ describe('create command', () => {
     expect(mockGitWorktreeAdd).toHaveBeenCalledWith(
       '/home/user/my-feature',
       'invalid-type!!!/my-feature',
+      { fromRemote: false },
     );
   });
 
@@ -221,6 +234,7 @@ describe('create command', () => {
       expect(mockGitWorktreeAdd).toHaveBeenCalledWith(
         '/home/user/PROJ-123-fix-login-page',
         'feature/PROJ-123-fix-login-page',
+        { fromRemote: false },
       );
     });
 
@@ -242,6 +256,7 @@ describe('create command', () => {
       expect(mockGitWorktreeAdd).toHaveBeenCalledWith(
         '/home/user/PROJ-456',
         'bugfix/PROJ-456',
+        { fromRemote: false },
       );
     });
 
@@ -289,6 +304,7 @@ describe('create command', () => {
       expect(mockGitWorktreeAdd).toHaveBeenCalledWith(
         '/home/user/my-feature',
         'feature/my-feature',
+        { fromRemote: false },
       );
     });
 
@@ -486,6 +502,7 @@ describe('create command', () => {
       expect(mockGitWorktreeAdd).toHaveBeenCalledWith(
         '/home/user/my-feature',
         'fix/my-feature',
+        { fromRemote: false },
       );
     });
 
@@ -504,6 +521,7 @@ describe('create command', () => {
       expect(mockGitWorktreeAdd).toHaveBeenCalledWith(
         '/home/user/my-feature',
         'my-feature',
+        { fromRemote: false },
       );
     });
 
@@ -525,6 +543,74 @@ describe('create command', () => {
       expect(mockGitWorktreeAdd).toHaveBeenCalledWith(
         '/home/user/PROJ-123-fix-login-page',
         'PROJ-123-fix-login-page',
+        { fromRemote: false },
+      );
+    });
+  });
+
+  describe('REMOTE BRANCH ADOPTION', () => {
+    it('ADOPT REMOTE (JIRA): when maybeAdoptRemoteBranch returns { adopt: true }, gitWorktreeAdd called with { fromRemote: true }', async () => {
+      mockFetchIssue.mockResolvedValue({ key: 'PROJ-123', summary: 'Fix login page', statusName: 'To Do' });
+      mockToSlug.mockImplementation((input: string) => {
+        if (input === 'Fix login page') return 'fix-login-page';
+        return input;
+      });
+      mockMaybeAdoptRemoteBranch.mockResolvedValue({ adopt: true });
+
+      const { registerCreateCommand } = await import('./create.js');
+      const program = new Command();
+      program.exitOverride();
+      registerCreateCommand(program);
+
+      await program.parseAsync(['create', 'PROJ-123', 'feature'], { from: 'user' });
+
+      expect(mockMaybeAdoptRemoteBranch).toHaveBeenCalledWith('feature/PROJ-123-fix-login-page');
+      expect(mockGitWorktreeAdd).toHaveBeenCalledWith(
+        '/home/user/PROJ-123-fix-login-page',
+        'feature/PROJ-123-fix-login-page',
+        { fromRemote: true },
+      );
+    });
+
+    it('DECLINE REMOTE (JIRA): when maybeAdoptRemoteBranch returns { adopt: false }, gitWorktreeAdd called with { fromRemote: false }', async () => {
+      mockFetchIssue.mockResolvedValue({ key: 'PROJ-123', summary: 'Fix login page', statusName: 'To Do' });
+      mockToSlug.mockImplementation((input: string) => {
+        if (input === 'Fix login page') return 'fix-login-page';
+        return input;
+      });
+      mockMaybeAdoptRemoteBranch.mockResolvedValue({ adopt: false });
+
+      const { registerCreateCommand } = await import('./create.js');
+      const program = new Command();
+      program.exitOverride();
+      registerCreateCommand(program);
+
+      await program.parseAsync(['create', 'PROJ-123', 'feature'], { from: 'user' });
+
+      expect(mockGitWorktreeAdd).toHaveBeenCalledWith(
+        '/home/user/PROJ-123-fix-login-page',
+        'feature/PROJ-123-fix-login-page',
+        { fromRemote: false },
+      );
+    });
+
+    it('ADOPT REMOTE (MANUAL): manual slug path also passes { fromRemote: true } when helper returns adopt=true', async () => {
+      mockToSlug.mockReturnValue('my-feature');
+      mockValidateSlug.mockReturnValue(undefined);
+      mockMaybeAdoptRemoteBranch.mockResolvedValue({ adopt: true });
+
+      const { registerCreateCommand } = await import('./create.js');
+      const program = new Command();
+      program.exitOverride();
+      registerCreateCommand(program);
+
+      await program.parseAsync(['create', 'my-feature', 'feature'], { from: 'user' });
+
+      expect(mockMaybeAdoptRemoteBranch).toHaveBeenCalledWith('feature/my-feature');
+      expect(mockGitWorktreeAdd).toHaveBeenCalledWith(
+        '/home/user/my-feature',
+        'feature/my-feature',
+        { fromRemote: true },
       );
     });
   });
